@@ -1,0 +1,247 @@
+package com.cycleapp.ui.screens
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.cycleapp.data.CycleSettings
+import com.cycleapp.data.DayEntry
+import com.cycleapp.data.EnergyLevel
+import com.cycleapp.util.CycleCalculator
+import java.time.LocalDate
+import kotlin.math.roundToInt
+
+@Composable
+fun StatisticsScreen(
+    periods: List<String>,
+    days: Map<String, DayEntry>,
+    settings: CycleSettings
+) {
+    val stats = CycleCalculator.computeCycleStats(periods)
+
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+        Text(text = "Статистика", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+
+        SectionCard(title = "Уровень энергии — последние 30 дней") {
+            EnergyBarChart(days = days)
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SectionCard(title = "Стабильность менструального цикла") {
+            if (stats.cycleLengths.isEmpty()) {
+                Text(
+                    "Отметьте минимум 2 начала менструации, чтобы увидеть статистику стабильности.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    StatBlock("Средняя длина", "${stats.averageLength.roundToInt()} дн.")
+                    StatBlock("Мин / Макс", "${stats.shortestCycle} / ${stats.longestCycle}")
+                    StatBlock(
+                        "Регулярность",
+                        if (stats.isRegular) "Стабильный" else "Нерегулярный",
+                        valueColor = if (stats.isRegular) Color(0xFF4CAF6D) else Color(0xFFF2B705)
+                    )
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "Отклонение: ±${String.format("%.1f", stats.stdDeviation)} дн. между циклами",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                CycleLengthChart(lengths = stats.cycleLengths, cycleLengthTarget = settings.cycleLength)
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SectionCard(title = "Средние показатели энергии по фазам") {
+            EnergyByPhaseSummary(days = days, periods = periods, settings = settings)
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(title: String, content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
+        Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(12.dp))
+        content()
+    }
+}
+
+@Composable
+private fun StatBlock(label: String, value: String, valueColor: Color = Color.Unspecified) {
+    Column {
+        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = value,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (valueColor == Color.Unspecified) MaterialTheme.colorScheme.onSurface else valueColor
+        )
+    }
+}
+
+/** Столбчатая диаграмма энергии за последние 30 дней */
+@Composable
+private fun EnergyBarChart(days: Map<String, DayEntry>) {
+    val today = LocalDate.now()
+    val last30 = (29 downTo 0).map { today.minusDays(it.toLong()) }
+    val barColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(110.dp)) {
+        val barWidth = size.width / last30.size
+        val maxHeight = size.height
+
+        last30.forEachIndexed { index, date ->
+            val iso = CycleCalculator.format(date)
+            val entry = days[iso]
+            val level = entry?.energy
+            val heightFraction = when (level) {
+                EnergyLevel.RED -> 0.2f
+                EnergyLevel.YELLOW -> 0.4f
+                EnergyLevel.WHITE -> 0.6f
+                EnergyLevel.GREEN -> 0.8f
+                EnergyLevel.BLUE -> 1.0f
+                null -> 0.06f
+            }
+            val color = level?.color ?: barColor
+            val barHeight = maxHeight * heightFraction
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(index * barWidth + barWidth * 0.15f, maxHeight - barHeight),
+                size = Size(barWidth * 0.7f, barHeight),
+                cornerRadius = CornerRadius(4f, 4f)
+            )
+        }
+    }
+}
+
+/** Линейный график длины последних циклов относительно целевой длины */
+@Composable
+private fun CycleLengthChart(lengths: List<Int>, cycleLengthTarget: Int) {
+    val lineColor = MaterialTheme.colorScheme.primary
+    val gridColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+    val recent = lengths.takeLast(12)
+    if (recent.isEmpty()) return
+
+    val minVal = (recent.min() - 2).coerceAtLeast(10)
+    val maxVal = recent.max() + 2
+
+    Canvas(modifier = Modifier.fillMaxWidth().height(90.dp)) {
+        val stepX = if (recent.size > 1) size.width / (recent.size - 1) else size.width
+        fun yFor(v: Int): Float {
+            val fraction = (v - minVal).toFloat() / (maxVal - minVal).toFloat()
+            return size.height - (fraction * size.height)
+        }
+
+        // целевая линия
+        val targetY = yFor(cycleLengthTarget.coerceIn(minVal, maxVal))
+        drawLine(
+            color = gridColor,
+            start = Offset(0f, targetY),
+            end = Offset(size.width, targetY),
+            strokeWidth = 2f
+        )
+
+        val points = recent.mapIndexed { i, v -> Offset(i * stepX, yFor(v)) }
+        for (i in 0 until points.size - 1) {
+            drawLine(
+                color = lineColor,
+                start = points[i],
+                end = points[i + 1],
+                strokeWidth = 4f,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round
+            )
+        }
+        points.forEach { p ->
+            drawCircle(color = lineColor, radius = 5f, center = p)
+        }
+    }
+}
+
+@Composable
+private fun EnergyByPhaseSummary(
+    days: Map<String, DayEntry>,
+    periods: List<String>,
+    settings: CycleSettings
+) {
+    val phaseScores = mutableMapOf<com.cycleapp.data.CyclePhase, MutableList<Int>>()
+    days.forEach { (iso, entry) ->
+        val energy = entry.energy ?: return@forEach
+        val info = CycleCalculator.getCycleInfo(iso, periods, settings.cycleLength, settings.periodLength)
+        val score = when (energy) {
+            EnergyLevel.RED -> 1
+            EnergyLevel.YELLOW -> 2
+            EnergyLevel.WHITE -> 3
+            EnergyLevel.GREEN -> 4
+            EnergyLevel.BLUE -> 5
+        }
+        phaseScores.getOrPut(info.phase) { mutableListOf() }.add(score)
+    }
+
+    if (phaseScores.isEmpty()) {
+        Text(
+            "Отмечайте энергию в календаре — здесь появится сравнение по фазам цикла.",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    val order = listOf(
+        com.cycleapp.data.CyclePhase.MENSTRUATION,
+        com.cycleapp.data.CyclePhase.FOLLICULAR,
+        com.cycleapp.data.CyclePhase.OVULATION,
+        com.cycleapp.data.CyclePhase.LUTEAL
+    )
+
+    Column {
+        order.forEach { phase ->
+            val scores = phaseScores[phase]
+            val avg = scores?.average() ?: 0.0
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(phase.label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    if (scores != null) "${String.format("%.1f", avg)} / 5" else "нет данных",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
