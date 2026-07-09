@@ -90,9 +90,11 @@ fun DayDetailSheet(
                             .size(46.dp)
                             .clip(CircleShape)
                             .background(level.color)
-                            .then(
-                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
-                                else Modifier
+                            .border(
+                                width = if (selected) 3.dp else 1.dp,
+                                color = if (selected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                shape = CircleShape
                             )
                             .clickable {
                                 selectedEnergy = if (selectedEnergy == level) null else level
@@ -102,17 +104,27 @@ fun DayDetailSheet(
             }
 
             Spacer(Modifier.height(18.dp))
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(14.dp)
             ) {
-                Text(text = "Начало менструации")
-                Switch(checked = isPeriod, onCheckedChange = { isPeriod = it })
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Менструация в этот день")
+                    Switch(checked = isPeriod, onCheckedChange = { isPeriod = it })
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Отметьте каждый день менструации — начало и конец определятся автоматически.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Spacer(Modifier.height(14.dp))

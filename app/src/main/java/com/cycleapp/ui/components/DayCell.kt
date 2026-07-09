@@ -32,20 +32,21 @@ fun DayCell(
     onClick: () -> Unit
 ) {
     val bg = energy?.color ?: MaterialTheme.colorScheme.surface
-    val textColor = when {
-        energy == null -> MaterialTheme.colorScheme.onSurface
-        energy == EnergyLevel.WHITE -> Color(0xFF333333)
-        else -> Color(0xFF1B1420)
-    }
+    // Энергетические цвета достаточно светлые/насыщенные — тёмный текст поверх них читается лучше,
+    // а для обычной ячейки (без отметки) используем цвет темы, который уже гарантированно контрастен.
+    val textColor = if (energy != null) Color(0xFF241426) else MaterialTheme.colorScheme.onSurface
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .padding(3.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .then(
-                if (isToday) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                else Modifier
+            .border(
+                width = if (isToday) 2.dp else 1.dp,
+                color = if (isToday) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                shape = RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center

@@ -1,39 +1,60 @@
 package com.cycleapp.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import com.cycleapp.data.WallpaperPreset
 
-val AccentPurple = Color(0xFFC9A0DC)
+/**
+ * Строит полную цветовую схему на основе выбранного пресета фона и акцентного цвета.
+ * Благодаря этому карточки, кнопки и фон согласованно меняются вместе с пресетом —
+ * а не остаются фиолетовыми при выборе другого фона.
+ * Текст всегда высокого контраста: светлый на тёмном фоне, тёмный на светлом.
+ */
+fun buildColorScheme(preset: WallpaperPreset, accent: Color, dark: Boolean): ColorScheme {
+    val baseDark = preset.colors[0]
+    val surfaceDark = preset.colors[1]
 
-private val DarkColors = darkColorScheme(
-    primary = AccentPurple,
-    secondary = Color(0xFFA996AD),
-    background = Color(0xFF1B1420),
-    surface = Color(0xFF2C2036),
-    onBackground = Color(0xFFF2E9F5),
-    onSurface = Color(0xFFF2E9F5),
-    surfaceVariant = Color(0xFF3D2F47),
-    onSurfaceVariant = Color(0xFFA996AD)
-)
-
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF8B5FA8),
-    secondary = Color(0xFF6B5670),
-    background = Color(0xFFFAF6FB),
-    surface = Color(0xFFFFFFFF),
-    onBackground = Color(0xFF2C2036),
-    onSurface = Color(0xFF2C2036),
-    surfaceVariant = Color(0xFFE9DEEF),
-    onSurfaceVariant = Color(0xFF6B5670)
-)
+    return if (dark) {
+        darkColorScheme(
+            primary = accent,
+            onPrimary = Color(0xFF241426),
+            secondary = lerp(accent, Color.White, 0.25f),
+            background = baseDark,
+            onBackground = Color(0xFFF7F2F7),
+            surface = surfaceDark,
+            onSurface = Color(0xFFF7F2F7),
+            surfaceVariant = lerp(surfaceDark, Color.White, 0.14f),
+            onSurfaceVariant = Color(0xFFDCCEE3),
+            outline = lerp(surfaceDark, Color.White, 0.3f)
+        )
+    } else {
+        val bgLight = lerp(baseDark, Color.White, 0.94f)
+        val surfVariantLight = lerp(surfaceDark, Color.White, 0.82f)
+        lightColorScheme(
+            primary = lerp(accent, Color.Black, 0.08f),
+            onPrimary = Color.White,
+            secondary = lerp(accent, Color.Black, 0.2f),
+            background = bgLight,
+            onBackground = Color(0xFF2A1F30),
+            surface = Color(0xFFFFFFFF),
+            onSurface = Color(0xFF2A1F30),
+            surfaceVariant = surfVariantLight,
+            onSurfaceVariant = Color(0xFF6B5670),
+            outline = Color(0xFFCBBFD1)
+        )
+    }
+}
 
 @Composable
-fun CycleAppTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
+fun CycleAppTheme(preset: WallpaperPreset, accent: Color, darkTheme: Boolean, content: @Composable () -> Unit) {
+    val scheme = buildColorScheme(preset, accent, darkTheme)
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = scheme,
         typography = MaterialTheme.typography,
         content = content
     )

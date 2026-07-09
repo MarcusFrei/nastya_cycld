@@ -33,6 +33,7 @@ import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.DayEntry
 import com.cycleapp.data.EnergyLevel
 import com.cycleapp.ui.components.DayCell
+import com.cycleapp.ui.components.ForecastCard
 import com.cycleapp.ui.components.PhaseCard
 import com.cycleapp.util.CycleCalculator
 import java.time.LocalDate
@@ -43,6 +44,9 @@ private val RU_MONTHS = listOf(
     "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
 )
 private val RU_WEEKDAYS = listOf("Пн","Вт","Ср","Чт","Пт","Сб","Вс")
+
+private const val FIXED_ROWS = 6
+private const val FIXED_CELLS = FIXED_ROWS * 7
 
 @Composable
 fun CalendarScreen(
@@ -56,9 +60,15 @@ fun CalendarScreen(
     val today = LocalDate.now()
     val todayIso = CycleCalculator.format(today)
     val todayInfo = CycleCalculator.getCycleInfo(todayIso, periods, settings.cycleLength, settings.periodLength)
+    val forecast = CycleCalculator.buildForecast(periods, days, settings.cycleLength, settings.periodLength)
 
     Column(modifier = Modifier.fillMaxWidth()) {
         PhaseCard(info = todayInfo, cycleLength = settings.cycleLength)
+
+        if (forecast != null) {
+            Spacer(Modifier.height(12.dp))
+            ForecastCard(forecast = forecast)
+        }
 
         Spacer(Modifier.height(18.dp))
 
@@ -93,13 +103,15 @@ fun CalendarScreen(
         }
         Spacer(Modifier.height(4.dp))
 
+        // Сетка всегда фиксированной высоты (6 строк) — иначе при переключении месяцев
+        // (5 строк / 6 строк) весь экран визуально "прыгает".
         val cells = buildMonthCells(viewMonth)
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(((cells.size / 7) * 52).dp),
+                .height((FIXED_ROWS * 52).dp),
         ) {
             items(cells) { cell ->
                 val iso = CycleCalculator.format(cell.date)
@@ -137,7 +149,9 @@ private fun buildMonthCells(month: YearMonth): List<MonthCell> {
         cells.add(MonthCell(month.atDay(d), otherMonth = false))
     }
     var next = month.atEndOfMonth().plusDays(1)
-    while (cells.size % 7 != 0) {
+    // Всегда дополняем ровно до FIXED_CELLS (6 строк), а не до ближайшего кратного 7 —
+    // это устраняет "прыжок" высоты календаря между месяцами с 5 и 6 неделями.
+    while (cells.size < FIXED_CELLS) {
         cells.add(MonthCell(next, otherMonth = true))
         next = next.plusDays(1)
     }
@@ -153,7 +167,6 @@ private fun LegendRow() {
         "Выше нормы" to EnergyLevel.GREEN.color,
         "Пик" to EnergyLevel.BLUE.color
     )
-    // Простая обёртка в две строки без экспериментального FlowRow
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             items.take(3).forEach { (label, color) -> LegendItem(label, color) }

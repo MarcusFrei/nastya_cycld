@@ -65,6 +65,10 @@ fun StatisticsScreen(
                         valueColor = if (stats.isRegular) Color(0xFF4CAF6D) else Color(0xFFF2B705)
                     )
                 }
+                stats.averagePeriodLength?.let { avgPeriod ->
+                    Spacer(Modifier.height(10.dp))
+                    StatBlock("Средняя длительность месячных", "${String.format("%.1f", avgPeriod)} дн.")
+                }
                 Spacer(Modifier.height(14.dp))
                 Text(
                     text = "Отклонение: ±${String.format("%.1f", stats.stdDeviation)} дн. между циклами",

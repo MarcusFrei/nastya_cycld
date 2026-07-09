@@ -1,6 +1,5 @@
 package com.cycleapp.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -25,16 +24,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.cycleapp.data.ACCENT_OPTIONS
 import com.cycleapp.data.CycleRepository
 import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.DayEntry
 import com.cycleapp.data.ThemeMode
+import com.cycleapp.data.WALLPAPER_PRESETS
 import com.cycleapp.ui.screens.CalendarScreen
 import com.cycleapp.ui.screens.DayDetailSheet
 import com.cycleapp.ui.screens.SettingsScreen
 import com.cycleapp.ui.screens.StatisticsScreen
 import com.cycleapp.ui.theme.CycleAppTheme
-import com.cycleapp.ui.theme.WallpaperBackgroundModifier
+import com.cycleapp.ui.theme.appBackgroundModifier
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 
@@ -61,11 +62,14 @@ fun CycleApp() {
         ThemeMode.SYSTEM -> systemDark
     }
 
-    CycleAppTheme(darkTheme = isDark) {
+    val preset = WALLPAPER_PRESETS.find { it.id == settings.wallpaperId } ?: WALLPAPER_PRESETS[0]
+    val accent = ACCENT_OPTIONS.find { it.id == settings.accentId }?.color ?: ACCENT_OPTIONS[0].color
+
+    CycleAppTheme(preset = preset, accent = accent, darkTheme = isDark) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
-                .then(WallpaperBackgroundModifier(settings.wallpaperId, isDark)),
+                .then(appBackgroundModifier()),
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
             bottomBar = {
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
@@ -112,7 +116,8 @@ fun CycleApp() {
                         onCycleLengthChange = { scope.launch { repo.updateCycleLength(it) } },
                         onPeriodLengthChange = { scope.launch { repo.updatePeriodLength(it) } },
                         onThemeModeChange = { scope.launch { repo.updateThemeMode(it) } },
-                        onWallpaperChange = { scope.launch { repo.updateWallpaper(it) } }
+                        onWallpaperChange = { scope.launch { repo.updateWallpaper(it) } },
+                        onAccentChange = { scope.launch { repo.updateAccent(it) } }
                     )
                 }
             }

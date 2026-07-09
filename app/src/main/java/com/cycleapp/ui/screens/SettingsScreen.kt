@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cycleapp.data.ACCENT_OPTIONS
 import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.ThemeMode
 import com.cycleapp.data.WALLPAPER_PRESETS
@@ -38,7 +39,8 @@ fun SettingsScreen(
     onCycleLengthChange: (Int) -> Unit,
     onPeriodLengthChange: (Int) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onWallpaperChange: (Int) -> Unit
+    onWallpaperChange: (Int) -> Unit,
+    onAccentChange: (Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         Text(text = "Настройки", fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -72,9 +74,38 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsCard(title = "Фон (для тёмной темы)") {
+        SettingsCard(title = "Акцентный цвет") {
             Text(
-                "Применяется в тёмном режиме — выберите фоновый градиент",
+                "Используется для кнопок, текущего дня и выделений",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ACCENT_OPTIONS.forEach { accent ->
+                    val selected = accent.id == settings.accentId
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(accent.color)
+                                .then(
+                                    if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape)
+                                )
+                                .clickable { onAccentChange(accent.id) }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsCard(title = "Фон") {
+            Text(
+                "Фон и оформление карточек подстраиваются под выбранный пресет",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

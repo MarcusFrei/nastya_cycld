@@ -21,6 +21,7 @@ class CycleRepository(private val context: Context) {
         val PERIOD_LENGTH = intPreferencesKey("period_length")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val WALLPAPER_ID = intPreferencesKey("wallpaper_id")
+        val ACCENT_ID = intPreferencesKey("accent_id")
     }
 
     val periodsFlow: Flow<List<String>> = context.dataStore.data.map { prefs ->
@@ -49,7 +50,8 @@ class CycleRepository(private val context: Context) {
             cycleLength = prefs[Keys.CYCLE_LENGTH] ?: 28,
             periodLength = prefs[Keys.PERIOD_LENGTH] ?: 5,
             themeMode = ThemeMode.entries.find { it.name == prefs[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM,
-            wallpaperId = prefs[Keys.WALLPAPER_ID] ?: 0
+            wallpaperId = prefs[Keys.WALLPAPER_ID] ?: 0,
+            accentId = prefs[Keys.ACCENT_ID] ?: 0
         )
     }
 
@@ -93,5 +95,9 @@ class CycleRepository(private val context: Context) {
 
     suspend fun updateWallpaper(id: Int) {
         context.dataStore.edit { it[Keys.WALLPAPER_ID] = id }
+    }
+
+    suspend fun updateAccent(id: Int) {
+        context.dataStore.edit { it[Keys.ACCENT_ID] = id }
     }
 }
