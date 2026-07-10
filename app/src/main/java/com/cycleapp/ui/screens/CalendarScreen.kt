@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -36,6 +37,7 @@ import com.cycleapp.data.EnergyLevel
 import com.cycleapp.ui.components.DayCell
 import com.cycleapp.ui.components.ForecastCard
 import com.cycleapp.ui.components.PhaseCard
+import com.cycleapp.ui.theme.PhaseColors
 import com.cycleapp.util.CycleCalculator
 import java.time.LocalDate
 import java.time.YearMonth
@@ -128,7 +130,7 @@ fun CalendarScreen(
                     isOtherMonth = cell.otherMonth,
                     energy = entry?.energy,
                     isPeriod = periods.contains(iso),
-                    isOvulation = info.cycleDay != null && info.cycleDay == info.ovulationDay,
+                    cycleInfo = info,
                     hasExtra = entry != null && (entry.symptoms.isNotEmpty() || entry.mood != null || entry.note.isNotBlank()),
                     onClick = { onDayClick(iso) }
                 )
@@ -137,6 +139,9 @@ fun CalendarScreen(
 
         Spacer(Modifier.height(14.dp))
         LegendList()
+
+        Spacer(Modifier.height(16.dp))
+        PhaseLegendList()
 
         // Прогноз — теперь после календаря, внизу экрана
         if (forecast != null) {
@@ -176,6 +181,13 @@ private fun LegendList() {
         EnergyLevel.RED, EnergyLevel.YELLOW, EnergyLevel.WHITE, EnergyLevel.GREEN, EnergyLevel.BLUE
     )
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Энергия",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
         items.forEach { level ->
             Row(
                 modifier = Modifier
@@ -192,6 +204,49 @@ private fun LegendList() {
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = level.label,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/** Легенда цветов фазы цикла, которыми теперь подсвечены сами ячейки календаря */
+@Composable
+private fun PhaseLegendList() {
+    val items = listOf(
+        "Менструация (отмечена)" to PhaseColors.menstruationActual,
+        "Менструация (прогноз)" to PhaseColors.menstruationPredicted,
+        "Фолликулярная фаза" to PhaseColors.follicular,
+        "Окно фертильности" to PhaseColors.fertile,
+        "День овуляции" to PhaseColors.ovulation,
+        "Лютеиновая фаза" to PhaseColors.luteal
+    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Фаза цикла",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        items.forEach { (label, color) ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(color)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = label,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

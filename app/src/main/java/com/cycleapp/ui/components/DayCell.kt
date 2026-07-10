@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cycleapp.data.CycleInfo
 import com.cycleapp.data.EnergyLevel
+import com.cycleapp.ui.theme.PhaseColors
 
 @Composable
 fun DayCell(
@@ -28,14 +30,30 @@ fun DayCell(
     isOtherMonth: Boolean,
     energy: EnergyLevel?,
     isPeriod: Boolean,
-    isOvulation: Boolean,
+    cycleInfo: CycleInfo,
     hasExtra: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = energy?.color ?: MaterialTheme.colorScheme.surface
-    // Энергетические цвета достаточно светлые/насыщенные — тёмный текст поверх них читается лучше,
-    // а для обычной ячейки (без отметки) используем цвет темы, который уже гарантированно контрастен.
+    val phaseFill = PhaseColors.fillTint(cycleInfo, isPeriod)
+    val phaseBorder = PhaseColors.borderColor(cycleInfo, isPeriod)
+
+    // Заливка: отмеченная энергия имеет приоритет (это данные, введённые пользователем),
+    // иначе — мягкий цвет фазы цикла, иначе — нейтральный цвет темы.
+    val bg = energy?.color ?: phaseFill ?: MaterialTheme.colorScheme.surface
     val textColor = if (energy != null) Color(0xFF241426) else MaterialTheme.colorScheme.onSurface
+
+    // Рамка: всегда показывает фазу цикла (даже если выбрана энергия), день "сегодня" —
+    // акцентным цветом темы поверх всего остального.
+    val borderColor = when {
+        isToday -> MaterialTheme.colorScheme.primary
+        phaseBorder != null -> phaseBorder
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+    }
+    val borderWidth = when {
+        isToday -> 2.2.dp
+        phaseBorder != null -> 1.6.dp
+        else -> 1.dp
+    }
 
     Box(
         modifier = Modifier
@@ -43,12 +61,7 @@ fun DayCell(
             .padding(3.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(
-                width = if (isToday) 2.dp else 1.dp,
-                color = if (isToday) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(12.dp)
-            )
+            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -58,23 +71,16 @@ fun DayCell(
             fontSize = 13.sp,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
         )
-        if (isPeriod) {
+        if (isPeriod || (cycleInfo.cycleDay != null && cycleInfo.cycleDay == cycleInfo.ovulationDay)) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 4.dp)
                     .size(5.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE5484D))
-            )
-        } else if (isOvulation) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(5.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF4D8CF2))
+                    .background(
+                        if (isPeriod) PhaseColors.menstruationActual else PhaseColors.ovulation
+                    )
             )
         }
         if (hasExtra) {
