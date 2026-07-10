@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -63,30 +64,36 @@ fun CalendarScreen(
     val forecast = CycleCalculator.buildForecast(periods, days, settings.cycleLength, settings.periodLength)
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Карточка фазы — компактная сводка на сегодня
         PhaseCard(info = todayInfo, cycleLength = settings.cycleLength)
 
-        if (forecast != null) {
-            Spacer(Modifier.height(12.dp))
-            ForecastCard(forecast = forecast)
-        }
+        Spacer(Modifier.height(14.dp))
 
-        Spacer(Modifier.height(18.dp))
-
+        // Календарь — сразу после карточки фазы, до прогноза
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onMonthChange(viewMonth.minusMonths(1)) }) {
-                Icon(Icons.Filled.ChevronLeft, contentDescription = "Предыдущий месяц")
+                Icon(
+                    Icons.Filled.ChevronLeft,
+                    contentDescription = "Предыдущий месяц",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
             Text(
                 text = "${RU_MONTHS[viewMonth.monthValue - 1]} ${viewMonth.year}",
                 fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
             )
             IconButton(onClick = { onMonthChange(viewMonth.plusMonths(1)) }) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = "Следующий месяц")
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = "Следующий месяц",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
             }
         }
 
@@ -103,8 +110,6 @@ fun CalendarScreen(
         }
         Spacer(Modifier.height(4.dp))
 
-        // Сетка всегда фиксированной высоты (6 строк) — иначе при переключении месяцев
-        // (5 строк / 6 строк) весь экран визуально "прыгает".
         val cells = buildMonthCells(viewMonth)
 
         LazyVerticalGrid(
@@ -124,13 +129,21 @@ fun CalendarScreen(
                     energy = entry?.energy,
                     isPeriod = periods.contains(iso),
                     isOvulation = info.cycleDay != null && info.cycleDay == info.ovulationDay,
+                    hasExtra = entry != null && (entry.symptoms.isNotEmpty() || entry.mood != null || entry.note.isNotBlank()),
                     onClick = { onDayClick(iso) }
                 )
             }
         }
 
-        Spacer(Modifier.height(18.dp))
-        LegendRow()
+        Spacer(Modifier.height(14.dp))
+        LegendList()
+
+        // Прогноз — теперь после календаря, внизу экрана
+        if (forecast != null) {
+            Spacer(Modifier.height(18.dp))
+            ForecastCard(forecast = forecast)
+        }
+
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -149,8 +162,6 @@ private fun buildMonthCells(month: YearMonth): List<MonthCell> {
         cells.add(MonthCell(month.atDay(d), otherMonth = false))
     }
     var next = month.atEndOfMonth().plusDays(1)
-    // Всегда дополняем ровно до FIXED_CELLS (6 строк), а не до ближайшего кратного 7 —
-    // это устраняет "прыжок" высоты календаря между месяцами с 5 и 6 неделями.
     while (cells.size < FIXED_CELLS) {
         cells.add(MonthCell(next, otherMonth = true))
         next = next.plusDays(1)
@@ -158,36 +169,33 @@ private fun buildMonthCells(month: YearMonth): List<MonthCell> {
     return cells
 }
 
+/** Компактный список-легенда: одна строка на цвет, без "прыгающих" чипов */
 @Composable
-private fun LegendRow() {
+private fun LegendList() {
     val items = listOf(
-        "Минимум" to EnergyLevel.RED.color,
-        "Ниже нормы" to EnergyLevel.YELLOW.color,
-        "Норма" to EnergyLevel.WHITE.color,
-        "Выше нормы" to EnergyLevel.GREEN.color,
-        "Пик" to EnergyLevel.BLUE.color
+        EnergyLevel.RED, EnergyLevel.YELLOW, EnergyLevel.WHITE, EnergyLevel.GREEN, EnergyLevel.BLUE
     )
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            items.take(3).forEach { (label, color) -> LegendItem(label, color) }
+        items.forEach { level ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(level.color)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = level.label,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            items.drop(3).forEach { (label, color) -> LegendItem(label, color) }
-        }
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: androidx.compose.ui.graphics.Color) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .padding(end = 5.dp)
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Text(text = label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

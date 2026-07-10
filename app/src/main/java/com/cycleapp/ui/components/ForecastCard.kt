@@ -43,19 +43,23 @@ fun ForecastCard(forecast: CycleForecast) {
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(6.dp))
-            Text("Прогноз", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Прогноз",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
         Spacer(Modifier.height(10.dp))
 
         if (forecast.predictedNextPeriodDate != null && forecast.daysUntilPeriod != null) {
-            val date = CycleCalculator.parse(forecast.predictedNextPeriodDate)
             val daysLabel = when {
                 forecast.daysUntilPeriod <= 0 -> "со дня на день"
                 forecast.daysUntilPeriod == 1 -> "завтра"
                 else -> "через ${forecast.daysUntilPeriod} дн."
             }
             Text(
-                text = "Ожидаемое начало следующих месячных: ${date.dayOfMonth}.${date.monthValue.toString().padStart(2,'0')} ($daysLabel)",
+                text = "Ожидаемое начало следующих месячных: ${CycleCalculator.formatDMY(forecast.predictedNextPeriodDate)} ($daysLabel)",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )

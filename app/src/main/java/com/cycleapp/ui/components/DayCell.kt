@@ -29,6 +29,7 @@ fun DayCell(
     energy: EnergyLevel?,
     isPeriod: Boolean,
     isOvulation: Boolean,
+    hasExtra: Boolean,
     onClick: () -> Unit
 ) {
     val bg = energy?.color ?: MaterialTheme.colorScheme.surface
@@ -74,6 +75,16 @@ fun DayCell(
                     .size(5.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF4D8CF2))
+            )
+        }
+        if (hasExtra) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(3.dp)
+                    .size(4.dp)
+                    .clip(CircleShape)
+                    .background(textColor.copy(alpha = 0.45f))
             )
         }
     }

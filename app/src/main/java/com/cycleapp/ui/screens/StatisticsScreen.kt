@@ -39,7 +39,12 @@ fun StatisticsScreen(
     val stats = CycleCalculator.computeCycleStats(periods)
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-        Text(text = "Статистика", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Статистика",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
         Spacer(Modifier.height(16.dp))
 
         SectionCard(title = "Уровень энергии — последние 30 дней") {
@@ -97,7 +102,7 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
-        Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(12.dp))
         content()
     }

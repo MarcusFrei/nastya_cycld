@@ -5,17 +5,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -30,23 +30,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.DayEntry
 import com.cycleapp.data.EnergyLevel
+import com.cycleapp.data.Mood
+import com.cycleapp.data.Symptom
 import com.cycleapp.util.CycleCalculator
-import java.time.format.TextStyle
-import java.util.Locale
 
-private val RU_MONTHS_GEN = listOf(
-    "января","февраля","марта","апреля","мая","июня",
-    "июля","августа","сентября","октября","ноября","декабря"
-)
-
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun DayDetailSheet(
     dateIso: String,
@@ -55,12 +50,14 @@ fun DayDetailSheet(
     periods: List<String>,
     settings: CycleSettings,
     onDismiss: () -> Unit,
-    onSave: (energy: EnergyLevel?, note: String, isPeriod: Boolean) -> Unit,
+    onSave: (energy: EnergyLevel?, note: String, isPeriod: Boolean, mood: Mood?, symptoms: Set<Symptom>) -> Unit,
     onClear: () -> Unit
 ) {
     var selectedEnergy by remember { mutableStateOf(initialEntry?.energy) }
     var isPeriod by remember { mutableStateOf(initialIsPeriod) }
     var note by remember { mutableStateOf(initialEntry?.note ?: "") }
+    var selectedMood by remember { mutableStateOf(initialEntry?.mood) }
+    var selectedSymptoms by remember { mutableStateOf(initialEntry?.symptoms ?: emptySet()) }
 
     val date = CycleCalculator.parse(dateIso)
     val info = CycleCalculator.getCycleInfo(dateIso, periods, settings.cycleLength, settings.periodLength)
@@ -68,9 +65,10 @@ fun DayDetailSheet(
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
             Text(
-                text = "${date.dayOfMonth} ${RU_MONTHS_GEN[date.monthValue - 1]} ${date.year}",
+                text = CycleCalculator.formatDMY(date),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = if (info.cycleDay != null) "${info.phase.label} · день ${info.cycleDay}" else info.phase.label,
@@ -103,31 +101,95 @@ fun DayDetailSheet(
                 }
             }
 
+            // Блок менструации — центрированный текст, единый отступ 12dp со всех сторон
             Spacer(Modifier.height(18.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(14.dp)
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Менструация в этот день")
+                    Text(
+                        text = "Менструация в этот день",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Switch(checked = isPeriod, onCheckedChange = { isPeriod = it })
                 }
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Отметьте каждый день менструации — начало и конец определятся автоматически.",
                     fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
-            Spacer(Modifier.height(14.dp))
+            // Настроение
+            Spacer(Modifier.height(18.dp))
+            Text(text = "Настроение", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Mood.entries.forEach { mood ->
+                    val selected = selectedMood == mood
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            )
+                            .clickable { selectedMood = if (selected) null else mood }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(mood.emoji, fontSize = 14.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            mood.label,
+                            fontSize = 12.sp,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Симптомы
+            Spacer(Modifier.height(18.dp))
+            Text(text = "Симптомы", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Symptom.entries.forEach { symptom ->
+                    val selected = selectedSymptoms.contains(symptom)
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                            )
+                            .clickable {
+                                selectedSymptoms = if (selected) selectedSymptoms - symptom else selectedSymptoms + symptom
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            symptom.label,
+                            fontSize = 12.sp,
+                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
@@ -144,7 +206,10 @@ fun DayDetailSheet(
                     modifier = Modifier.weight(1f)
                 ) { Text("Очистить") }
                 Button(
-                    onClick = { onSave(selectedEnergy, note.trim(), isPeriod); onDismiss() },
+                    onClick = {
+                        onSave(selectedEnergy, note.trim(), isPeriod, selectedMood, selectedSymptoms)
+                        onDismiss()
+                    },
                     modifier = Modifier.weight(1f)
                 ) { Text("Сохранить") }
             }

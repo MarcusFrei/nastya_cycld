@@ -20,6 +20,12 @@ object CycleCalculator {
     fun parse(iso: String): LocalDate = LocalDate.parse(iso, FORMATTER)
     fun format(date: LocalDate): String = date.format(FORMATTER)
 
+    /** Формат день.месяц.год — используется везде, где дата показывается пользователю */
+    fun formatDMY(date: LocalDate): String =
+        "%02d.%02d.%04d".format(date.dayOfMonth, date.monthValue, date.year)
+
+    fun formatDMY(iso: String): String = formatDMY(parse(iso))
+
     /** Группирует отмеченные дни менструации в непрерывные диапазоны (начало-конец) */
     fun computePeriodRanges(periodDays: List<String>): List<Pair<String, String>> {
         val sorted = periodDays.distinct().sorted().map { parse(it) }
@@ -156,6 +162,9 @@ object CycleCalculator {
         val weekBeforeIso = format(weekBefore)
         val weekBeforeInfo = getCycleInfo(weekBeforeIso, periods, cycleLength, periodLength)
 
+        val ovulationDay = maxOf(1, cycleLength - 14)
+        val predictedOvulation = predicted.minusDays((cycleLength - ovulationDay).toLong())
+
         // Средний исторический уровень энергии в лютеиновой фазе (по всем прошлым циклам)
         val lutealScores = days.entries.mapNotNull { (iso, entry) ->
             val energy = entry.energy ?: return@mapNotNull null
@@ -167,12 +176,13 @@ object CycleCalculator {
         val note = if (daysUntil in 0..7) {
             "Через ${if (daysUntil == 0) "0" else daysUntil} дн. ожидаются месячные. Обычно на этом отрезке — поздняя лютеиновая фаза: возможны раздражительность, перепады настроения, тяга к еде и снижение энергии (ПМС)."
         } else {
-            "За неделю до предполагаемого начала месячных (~$weekBeforeIso) обычно наступает поздняя лютеиновая фаза — возможны раздражительность и снижение энергии."
+            "За неделю до предполагаемого начала месячных (~${formatDMY(weekBefore)}) обычно наступает поздняя лютеиновая фаза — возможны раздражительность и снижение энергии."
         }
 
         return CycleForecast(
             predictedNextPeriodDate = format(predicted),
             daysUntilPeriod = daysUntil,
+            predictedOvulationDate = format(predictedOvulation),
             weekBeforeDate = weekBeforeIso,
             weekBeforePhase = weekBeforeInfo.phase,
             weekBeforeEnergyGuess = energyGuess,
