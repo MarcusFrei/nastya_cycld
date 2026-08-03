@@ -1,6 +1,8 @@
 package com.cycleapp.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +70,14 @@ fun CalendarScreen(
     Column(modifier = Modifier.fillMaxWidth()) {
         // Карточка фазы — компактная сводка на сегодня
         PhaseCard(info = todayInfo, cycleLength = settings.cycleLength)
+
+        // Напоминание отметить энергию сегодня, если ещё не отмечена —
+        // так со временем накапливаются данные для графика в статистике.
+        val todayEntry = days[todayIso]
+        if (todayEntry?.energy == null) {
+            Spacer(Modifier.height(10.dp))
+            EnergyReminderCard(onClick = { onDayClick(todayIso) })
+        }
 
         Spacer(Modifier.height(14.dp))
 
@@ -212,17 +222,9 @@ private fun LegendList() {
     }
 }
 
-/** Легенда цветов фазы цикла, которыми теперь подсвечены сами ячейки календаря */
+/** Легенда для менструации (единственная заливка, что осталась) + значков овуляции/фертильности */
 @Composable
 private fun PhaseLegendList() {
-    val items = listOf(
-        "Менструация (отмечена)" to PhaseColors.menstruationActual,
-        "Менструация (прогноз)" to PhaseColors.menstruationPredicted,
-        "Фолликулярная фаза" to PhaseColors.follicular,
-        "Окно фертильности" to PhaseColors.fertile,
-        "День овуляции" to PhaseColors.ovulation,
-        "Лютеиновая фаза" to PhaseColors.luteal
-    )
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Фаза цикла",
@@ -231,24 +233,79 @@ private fun PhaseLegendList() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 4.dp)
         )
-        items.forEach { (label, color) ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        LegendRowColor("Менструация (отмечена)", PhaseColors.menstruationActual)
+        LegendRowColor("Менструация (прогноз)", PhaseColors.menstruationPredicted)
+        LegendRowSymbol("★", "День овуляции")
+        LegendRowSymbol("🌱", "Окно фертильности")
+    }
+}
+
+@Composable
+private fun LegendRowColor(label: String, color: androidx.compose.ui.graphics.Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(color)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LegendRowSymbol(symbol: String, label: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(10.dp), contentAlignment = Alignment.Center) {
+            Text(text = symbol, fontSize = 10.sp)
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Ненавязчивая карточка-напоминание отметить энергию за сегодня — по нажатию открывает день */
+@Composable
+private fun EnergyReminderCard(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Отметьте энергию за сегодня",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "Так со временем накопится график для статистики",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+            listOf(EnergyLevel.RED, EnergyLevel.YELLOW, EnergyLevel.GREEN, EnergyLevel.BLUE).forEach { level ->
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(color)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(level.color)
+                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
                 )
             }
         }

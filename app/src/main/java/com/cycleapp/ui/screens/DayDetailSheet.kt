@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -76,8 +76,8 @@ fun DayDetailSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState()) // <-- ДОБАВИТЬ ЭТУ СТРОКУ
+                .navigationBarsPadding() // чтобы кнопка "Сохранить" не пряталась за системной навигацией
+                .verticalScroll(rememberScrollState()) // весь контент теперь прокручивается — иначе кнопка уезжала за экран
                 .padding(horizontal = 20.dp)
                 .padding(top = 4.dp, bottom = 20.dp)
         ) {

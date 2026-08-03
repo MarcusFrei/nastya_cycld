@@ -6,49 +6,32 @@ import com.cycleapp.data.CyclePhase
 import com.cycleapp.data.PregnancyChance
 
 /**
- * Цвета для отображения фазы цикла прямо на ячейках календаря — отдельная палитра
- * от цветов энергии, чтобы не путаться: менструация, фолликулярная фаза, окно фертильности,
- * день овуляции, лютеиновая фаза. Прогнозируемые (ещё не наступившие / не отмеченные) дни
- * менструации показываются более светлым оттенком, чем фактически отмеченные.
+ * Минимальная цветовая индикация на календаре — только для "критических" дней:
+ * менструация (факт/прогноз). Фолликулярная и лютеиновая фазы больше НЕ подсвечиваются
+ * заливкой/рамкой — это перегружало календарь и ухудшало читаемость цифр на тёмном фоне.
+ * Овуляция и окно фертильности показываются маленькими значками (звезда / росток),
+ * а не цветом всей ячейки — так же, как это сделано в референсе, который прислал пользователь.
  */
 object PhaseColors {
     val menstruationActual = Color(0xFFD1477E)
     val menstruationPredicted = Color(0xFFF0AFC7)
     val menstruationTint = Color(0xFFF8DCE6)
+    val menstruationTintLight = Color(0xFFFBEAF0)
 
-    val follicular = Color(0xFF4FAE7C)
-    val follicularTint = Color(0xFFDCF0E4)
+    val ovulationMarker = Color(0xFF2FA9C3)
+    val fertileMarker = Color(0xFF5FBF7C)
 
-    val ovulation = Color(0xFF2FA9C3)
-    val ovulationTint = Color(0xFFCDEEF4)
-
-    val fertile = Color(0xFF6FC7D6)
-    val fertileTint = Color(0xFFDCF3F6)
-
-    val luteal = Color(0xFF9B7FC7)
-    val lutealTint = Color(0xFFEBE1F7)
-
-    /** Насыщенный цвет для рамки ячейки — виден всегда, даже поверх отмеченной энергии */
-    fun borderColor(info: CycleInfo, isPeriod: Boolean): Color? = when {
-        info.cycleDay == null -> null
-        isPeriod -> menstruationActual
-        info.phase == CyclePhase.MENSTRUATION -> menstruationPredicted
-        info.pregnancyChance == PregnancyChance.PEAK -> ovulation
-        info.pregnancyChance == PregnancyChance.HIGH || info.pregnancyChance == PregnancyChance.MEDIUM -> fertile
-        info.phase == CyclePhase.FOLLICULAR -> follicular
-        info.phase == CyclePhase.LUTEAL -> luteal
-        else -> null
-    }
-
-    /** Мягкая заливка ячейки — используется, когда энергия за день не отмечена */
+    /** Мягкая заливка ячейки — только для менструации (факт или прогноз), иначе null */
     fun fillTint(info: CycleInfo, isPeriod: Boolean): Color? = when {
-        info.cycleDay == null -> null
         isPeriod -> menstruationTint
-        info.phase == CyclePhase.MENSTRUATION -> menstruationTint.copy(alpha = 0.6f)
-        info.pregnancyChance == PregnancyChance.PEAK -> ovulationTint
-        info.pregnancyChance == PregnancyChance.HIGH || info.pregnancyChance == PregnancyChance.MEDIUM -> fertileTint
-        info.phase == CyclePhase.FOLLICULAR -> follicularTint
-        info.phase == CyclePhase.LUTEAL -> lutealTint
+        info.phase == CyclePhase.MENSTRUATION -> menstruationTintLight
         else -> null
     }
+
+    fun isOvulationDay(info: CycleInfo): Boolean =
+        info.cycleDay != null && info.cycleDay == info.ovulationDay
+
+    /** Фертильное окно, но не сам день овуляции (у него отдельный маркер) */
+    fun isFertileWindow(info: CycleInfo): Boolean =
+        !isOvulationDay(info) && (info.pregnancyChance == PregnancyChance.HIGH || info.pregnancyChance == PregnancyChance.MEDIUM)
 }

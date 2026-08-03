@@ -34,26 +34,15 @@ fun DayCell(
     hasExtra: Boolean,
     onClick: () -> Unit
 ) {
-    val phaseFill = PhaseColors.fillTint(cycleInfo, isPeriod)
-    val phaseBorder = PhaseColors.borderColor(cycleInfo, isPeriod)
-
-    // Заливка: отмеченная энергия имеет приоритет (это данные, введённые пользователем),
-    // иначе — мягкий цвет фазы цикла, иначе — нейтральный цвет темы.
-    val bg = energy?.color ?: phaseFill ?: MaterialTheme.colorScheme.surface
+    // Заливка: отмеченная энергия — главный приоритет (это данные пользователя).
+    // Если энергии нет — лёгкая подсветка только для менструации (факт/прогноз).
+    // Фолликулярная и лютеиновая фазы больше не подсвечиваются заливкой — только текст сверху.
+    val periodFill = PhaseColors.fillTint(cycleInfo, isPeriod)
+    val bg = energy?.color ?: periodFill ?: MaterialTheme.colorScheme.surface
     val textColor = if (energy != null) Color(0xFF241426) else MaterialTheme.colorScheme.onSurface
 
-    // Рамка: всегда показывает фазу цикла (даже если выбрана энергия), день "сегодня" —
-    // акцентным цветом темы поверх всего остального.
-    val borderColor = when {
-        isToday -> MaterialTheme.colorScheme.primary
-        phaseBorder != null -> phaseBorder
-        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    }
-    val borderWidth = when {
-        isToday -> 2.2.dp
-        phaseBorder != null -> 1.6.dp
-        else -> 1.dp
-    }
+    val isOvulation = PhaseColors.isOvulationDay(cycleInfo)
+    val isFertile = PhaseColors.isFertileWindow(cycleInfo)
 
     Box(
         modifier = Modifier
@@ -61,7 +50,12 @@ fun DayCell(
             .padding(3.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(12.dp))
+            .border(
+                width = if (isToday) 2.2.dp else 1.dp,
+                color = if (isToday) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -71,18 +65,44 @@ fun DayCell(
             fontSize = 13.sp,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
         )
-        if (isPeriod || (cycleInfo.cycleDay != null && cycleInfo.cycleDay == cycleInfo.ovulationDay)) {
+
+        // Маленький значок вместо заливки всей ячейки — овуляция или фертильное окно
+        if (isOvulation) {
+            Text(
+                text = "★",
+                fontSize = 9.sp,
+                color = PhaseColors.ovulationMarker,
+                modifier = Modifier.align(Alignment.TopStart).padding(3.dp)
+            )
+        } else if (isFertile) {
+            Text(
+                text = "🌱",
+                fontSize = 8.sp,
+                modifier = Modifier.align(Alignment.TopStart).padding(2.dp)
+            )
+        }
+
+        // Точка снизу — факт менструации (насыщенная) или прогноз (светлая)
+        if (isPeriod) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 4.dp)
                     .size(5.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (isPeriod) PhaseColors.menstruationActual else PhaseColors.ovulation
-                    )
+                    .background(PhaseColors.menstruationActual)
+            )
+        } else if (cycleInfo.phase == com.cycleapp.data.CyclePhase.MENSTRUATION) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 4.dp)
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, PhaseColors.menstruationPredicted, CircleShape)
             )
         }
+
         if (hasExtra) {
             Box(
                 modifier = Modifier

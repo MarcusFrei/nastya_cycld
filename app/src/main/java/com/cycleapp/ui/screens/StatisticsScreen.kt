@@ -37,6 +37,7 @@ fun StatisticsScreen(
     settings: CycleSettings
 ) {
     val stats = CycleCalculator.computeCycleStats(periods)
+    val history = CycleCalculator.buildHistory(periods)
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         Text(
@@ -45,13 +46,27 @@ fun StatisticsScreen(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(18.dp))
+
+        // --- Анализ энергии ---
+        SectionHeader("Анализ энергии")
+        Spacer(Modifier.height(10.dp))
 
         SectionCard(title = "Уровень энергии — последние 30 дней") {
             EnergyBarChart(days = days)
         }
 
         Spacer(Modifier.height(16.dp))
+
+        SectionCard(title = "Средние показатели энергии по фазам") {
+            EnergyByPhaseSummary(days = days, periods = periods, settings = settings)
+        }
+
+        Spacer(Modifier.height(22.dp))
+
+        // --- Анализ цикла ---
+        SectionHeader("Анализ цикла")
+        Spacer(Modifier.height(10.dp))
 
         SectionCard(title = "Стабильность менструального цикла") {
             if (stats.cycleLengths.isEmpty()) {
@@ -85,10 +100,59 @@ fun StatisticsScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        if (history.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            SectionCard(title = "История циклов") {
+                CycleHistoryList(history = history)
+            }
+        }
+    }
+}
 
-        SectionCard(title = "Средние показатели энергии по фазам") {
-            EnergyByPhaseSummary(days = days, periods = periods, settings = settings)
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+private fun CycleHistoryList(history: List<CycleCalculator.HistoryRow>) {
+    Column {
+        history.take(6).forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = "${CycleCalculator.formatDMY(row.startIso)} – ${CycleCalculator.formatDMY(row.endIso)}",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${row.periodLengthDays} дн. месячных",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (row.cycleLengthDays != null) {
+                    Text(
+                        text = "${row.cycleLengthDays} дн. цикл",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            if (index < history.take(6).size - 1) {
+                androidx.compose.material3.HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                )
+            }
         }
     }
 }

@@ -88,6 +88,26 @@ object CycleCalculator {
         return CycleInfo(cycleDay, phase, ovulationDay, chance)
     }
 
+    data class HistoryRow(
+        val startIso: String,
+        val endIso: String,
+        val periodLengthDays: Int,
+        val cycleLengthDays: Int?
+    )
+
+    /** История циклов для отображения списком: от новых к старым, с длиной цикла до предыдущего начала */
+    fun buildHistory(periods: List<String>): List<HistoryRow> {
+        val ranges = computePeriodRanges(periods).sortedBy { it.first }
+        val rows = mutableListOf<HistoryRow>()
+        for (i in ranges.indices) {
+            val (start, end) = ranges[i]
+            val periodLen = ChronoUnit.DAYS.between(parse(start), parse(end)).toInt() + 1
+            val cycleLen = if (i > 0) ChronoUnit.DAYS.between(parse(ranges[i - 1].first), parse(start)).toInt() else null
+            rows.add(HistoryRow(start, end, periodLen, cycleLen))
+        }
+        return rows.reversed()
+    }
+
     data class CycleStats(
         val cycleLengths: List<Int>,
         val averageLength: Double,
