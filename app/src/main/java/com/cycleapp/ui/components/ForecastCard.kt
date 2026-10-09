@@ -1,18 +1,17 @@
 package com.cycleapp.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,84 +30,77 @@ fun ForecastCard(forecast: CycleForecast) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Filled.Insights,
+                Icons.Filled.AutoAwesome,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(19.dp)
             )
-            Spacer(Modifier.width(6.dp))
             Text(
-                "Прогноз",
-                fontSize = 14.sp,
+                "Ближайший прогноз",
+                modifier = Modifier.padding(start = 8.dp),
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
-        Spacer(Modifier.height(10.dp))
-
+        Spacer(Modifier.size(12.dp))
         if (forecast.predictedNextPeriodDate != null && forecast.daysUntilPeriod != null) {
             val daysLabel = when {
-                forecast.daysUntilPeriod <= 0 -> "со дня на день"
-                forecast.daysUntilPeriod == 1 -> "завтра"
-                else -> "через ${forecast.daysUntilPeriod} дн."
+                forecast.daysUntilPeriod <= 0 -> "ожидается в ближайшее время"
+                forecast.daysUntilPeriod == 1 -> "примерно завтра"
+                else -> "примерно через ${forecast.daysUntilPeriod} дн."
             }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Следующая менструация", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        CycleCalculator.formatDMY(forecast.predictedNextPeriodDate),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(daysLabel, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("♡", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        } else {
             Text(
-                text = "Ожидаемое начало следующих месячных: ${CycleCalculator.formatDMY(forecast.predictedNextPeriodDate)} ($daysLabel)",
+                "Отметьте начало менструации, чтобы приложение могло построить прогноз.",
                 fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurface
+                lineHeight = 18.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            forecast.weekBeforeEnergyGuess?.let { level ->
-                androidx.compose.foundation.layout.Box(
-                    modifier = Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(level.color)
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Column {
-                Text(
-                    text = "За неделю до месячных ожидается: ${forecast.weekBeforePhase.label.lowercase()}" +
-                        (forecast.weekBeforeEnergyGuess?.let { ", энергия ~«${it.label.lowercase()}»" } ?: ""),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.size(12.dp))
         Text(
-            text = forecast.note,
+            forecast.note,
             fontSize = 11.sp,
             lineHeight = 15.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(4.dp))
         Text(
-            text = "Прогноз строится на основе ваших предыдущих отметок и носит приблизительный характер.",
+            "Прогноз приблизительный и не подходит для предотвращения беременности.",
+            modifier = Modifier.padding(top = 5.dp),
             fontSize = 10.sp,
-            lineHeight = 13.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            lineHeight = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
         )
     }
 }
-

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cycleapp.data.CycleInfo
+import com.cycleapp.data.CyclePhase
 import com.cycleapp.data.EnergyLevel
 import com.cycleapp.ui.theme.PhaseColors
 
@@ -34,72 +35,58 @@ fun DayCell(
     hasExtra: Boolean,
     onClick: () -> Unit
 ) {
-    // Заливка: отмеченная энергия — главный приоритет (это данные пользователя).
-    // Если энергии нет — лёгкая подсветка только для менструации (факт/прогноз).
-    // Фолликулярная и лютеиновая фазы больше не подсвечиваются заливкой — только текст сверху.
     val periodFill = PhaseColors.fillTint(cycleInfo, isPeriod)
-    val bg = energy?.color ?: periodFill ?: MaterialTheme.colorScheme.surface
-    val textColor = if (energy != null) Color(0xFF241426) else MaterialTheme.colorScheme.onSurface
-
+    val fill = energy?.color ?: periodFill
     val isOvulation = PhaseColors.isOvulationDay(cycleInfo)
     val isFertile = PhaseColors.isFertileWindow(cycleInfo)
+    val shape = RoundedCornerShape(12.dp)
 
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .padding(3.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .border(
-                width = if (isToday) 2.2.dp else 1.dp,
-                color = if (isToday) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp)
+            .padding(2.dp)
+            .clip(shape)
+            .then(if (fill != null) Modifier.background(fill) else Modifier)
+            .then(
+                if (isToday) Modifier.border(1.7.dp, MaterialTheme.colorScheme.primary, shape)
+                else Modifier
             )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = dayNumber.toString(),
-            color = textColor.copy(alpha = if (isOtherMonth) 0.35f else 1f),
-            fontSize = 13.sp,
+            color = when {
+                isOtherMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                energy != null -> Color(0xFF302333)
+                isPeriod -> Color(0xFF873653)
+                else -> MaterialTheme.colorScheme.onSurface
+            },
+            fontSize = 12.sp,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
         )
 
-        // Маленький значок вместо заливки всей ячейки — овуляция или фертильное окно
-        if (isOvulation) {
+        if (isOvulation || isFertile) {
             Text(
-                text = "★",
-                fontSize = 9.sp,
-                color = PhaseColors.ovulationMarker,
-                modifier = Modifier.align(Alignment.TopStart).padding(3.dp)
-            )
-        } else if (isFertile) {
-            Text(
-                text = "🌱",
-                fontSize = 8.sp,
-                modifier = Modifier.align(Alignment.TopStart).padding(2.dp)
+                text = if (isOvulation) "✦" else "·",
+                fontSize = if (isOvulation) 10.sp else 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isOvulation) PhaseColors.ovulationMarker else PhaseColors.fertileMarker,
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 3.dp, top = 0.dp)
             )
         }
 
-        // Точка снизу — факт менструации (насыщенная) или прогноз (светлая)
-        if (isPeriod) {
+        if (isPeriod || cycleInfo.phase == CyclePhase.MENSTRUATION) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(5.dp)
+                    .padding(bottom = 2.dp)
+                    .size(4.dp)
                     .clip(CircleShape)
-                    .background(PhaseColors.menstruationActual)
-            )
-        } else if (cycleInfo.phase == com.cycleapp.data.CyclePhase.MENSTRUATION) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(5.dp)
-                    .clip(CircleShape)
-                    .border(1.dp, PhaseColors.menstruationPredicted, CircleShape)
+                    .then(
+                        if (isPeriod) Modifier.background(PhaseColors.menstruationActual)
+                        else Modifier.border(1.dp, PhaseColors.menstruationPredicted, CircleShape)
+                    )
             )
         }
 
@@ -110,7 +97,10 @@ fun DayCell(
                     .padding(3.dp)
                     .size(4.dp)
                     .clip(CircleShape)
-                    .background(textColor.copy(alpha = 0.45f))
+                    .background(
+                        if (energy != null) Color(0xFF302333).copy(alpha = 0.6f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
             )
         }
     }

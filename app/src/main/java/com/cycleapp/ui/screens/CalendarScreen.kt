@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,14 +48,14 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 private val RU_MONTHS = listOf(
-    "Январь","Февраль","Март","Апрель","Май","Июнь",
-    "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
 )
-private val RU_WEEKDAYS = listOf("Пн","Вт","Ср","Чт","Пт","Сб","Вс")
-
+private val RU_WEEKDAYS = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
 private const val FIXED_ROWS = 6
 private const val FIXED_CELLS = FIXED_ROWS * 7
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun CalendarScreen(
     viewMonth: YearMonth,
@@ -62,104 +65,170 @@ fun CalendarScreen(
     settings: CycleSettings,
     onDayClick: (String) -> Unit
 ) {
-    val today = LocalDate.now()
-    val todayIso = CycleCalculator.format(today)
+    val todayIso = CycleCalculator.format(LocalDate.now())
     val todayInfo = CycleCalculator.getCycleInfo(todayIso, periods, settings.cycleLength, settings.periodLength)
     val forecast = CycleCalculator.buildForecast(periods, days, settings.cycleLength, settings.periodLength)
+    val todayEntry = days[todayIso]
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Карточка фазы — компактная сводка на сегодня
+        Text(
+            text = "Мой цикл",
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Text(
+            text = "Самочувствие и календарь в одном месте",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 3.dp, bottom = 16.dp)
+        )
+
         PhaseCard(info = todayInfo, cycleLength = settings.cycleLength)
 
-        // Напоминание отметить энергию сегодня, если ещё не отмечена —
-        // так со временем накапливаются данные для графика в статистике.
-        val todayEntry = days[todayIso]
         if (todayEntry?.energy == null) {
             Spacer(Modifier.height(10.dp))
-            EnergyReminderCard(onClick = { onDayClick(todayIso) })
-        }
-
-        Spacer(Modifier.height(14.dp))
-
-        // Календарь — сразу после карточки фазы, до прогноза
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { onMonthChange(viewMonth.minusMonths(1)) }) {
-                Icon(
-                    Icons.Filled.ChevronLeft,
-                    contentDescription = "Предыдущий месяц",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-            Text(
-                text = "${RU_MONTHS[viewMonth.monthValue - 1]} ${viewMonth.year}",
-                fontSize = 17.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            IconButton(onClick = { onMonthChange(viewMonth.plusMonths(1)) }) {
-                Icon(
-                    Icons.Filled.ChevronRight,
-                    contentDescription = "Следующий месяц",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                    .clickable { onDayClick(todayIso) }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.EditCalendar, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+                Column(modifier = Modifier.weight(1f).padding(start = 11.dp)) {
+                    Text("Как ваша энергия сегодня?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Отметка займёт несколько секунд", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            RU_WEEKDAYS.forEach {
-                Text(
-                    text = it,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-
-        val cells = buildMonthCells(viewMonth)
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
+        Spacer(Modifier.height(18.dp))
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height((FIXED_ROWS * 52).dp),
+                .clip(RoundedCornerShape(22.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                .padding(horizontal = 10.dp, vertical = 12.dp)
         ) {
-            items(cells) { cell ->
-                val iso = CycleCalculator.format(cell.date)
-                val entry = days[iso]
-                val info = CycleCalculator.getCycleInfo(iso, periods, settings.cycleLength, settings.periodLength)
-                DayCell(
-                    dayNumber = cell.date.dayOfMonth,
-                    isToday = iso == todayIso,
-                    isOtherMonth = cell.otherMonth,
-                    energy = entry?.energy,
-                    isPeriod = periods.contains(iso),
-                    cycleInfo = info,
-                    hasExtra = entry != null && (entry.symptoms.isNotEmpty() || entry.mood != null || entry.note.isNotBlank()),
-                    onClick = { onDayClick(iso) }
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { onMonthChange(viewMonth.minusMonths(1)) }) {
+                    Icon(Icons.Filled.ChevronLeft, contentDescription = "Предыдущий месяц", tint = MaterialTheme.colorScheme.onSurface)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "${RU_MONTHS[viewMonth.monthValue - 1]} ${viewMonth.year}",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text("Нажмите на день для отметки", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { onMonthChange(viewMonth.plusMonths(1)) }) {
+                    Icon(Icons.Filled.ChevronRight, contentDescription = "Следующий месяц", tint = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                RU_WEEKDAYS.forEachIndexed { index, day ->
+                    Text(
+                        text = day,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (index > 4) MaterialTheme.colorScheme.primary.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            val cells = buildMonthCells(viewMonth)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(7),
+                modifier = Modifier.fillMaxWidth().height((FIXED_ROWS * 47).dp),
+                userScrollEnabled = false,
+                horizontalArrangement = Arrangement.spacedBy(1.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                items(cells) { cell ->
+                    val iso = CycleCalculator.format(cell.date)
+                    val entry = days[iso]
+                    val info = CycleCalculator.getCycleInfo(iso, periods, settings.cycleLength, settings.periodLength)
+                    DayCell(
+                        dayNumber = cell.date.dayOfMonth,
+                        isToday = iso == todayIso,
+                        isOtherMonth = cell.otherMonth,
+                        energy = entry?.energy,
+                        isPeriod = periods.contains(iso),
+                        cycleInfo = info,
+                        hasExtra = entry != null && (entry.symptoms.isNotEmpty() || entry.mood != null || entry.note.isNotBlank()),
+                        onClick = { onDayClick(iso) }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Text("ЭНЕРГИЯ", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 5.dp, bottom = 7.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                EnergyLevel.entries.forEach { level ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(level.color).border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f), CircleShape))
+                        Spacer(Modifier.width(5.dp))
+                        Text(level.label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.background.copy(alpha = 0.55f)).padding(horizontal = 10.dp, vertical = 9.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(PhaseColors.menstruationActual))
+                    Spacer(Modifier.width(5.dp))
+                    Text("Месячные", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🌱", fontSize = 11.sp)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Фертильное окно", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("★", fontSize = 11.sp, color = PhaseColors.ovulationMarker)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Овуляция", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
 
-        Spacer(Modifier.height(14.dp))
-        LegendList()
-
-        Spacer(Modifier.height(16.dp))
-        PhaseLegendList()
-
-        // Прогноз — теперь после календаря, внизу экрана
         if (forecast != null) {
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(14.dp))
             ForecastCard(forecast = forecast)
         }
-
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(22.dp))
     }
 }
 
@@ -167,147 +236,14 @@ private data class MonthCell(val date: LocalDate, val otherMonth: Boolean)
 
 private fun buildMonthCells(month: YearMonth): List<MonthCell> {
     val first = month.atDay(1)
-    val startWeekday = first.dayOfWeek.value // Monday=1..Sunday=7
+    val startWeekday = first.dayOfWeek.value
     val cells = mutableListOf<MonthCell>()
-
-    for (i in (startWeekday - 1) downTo 1) {
-        cells.add(MonthCell(first.minusDays(i.toLong()), otherMonth = true))
-    }
-    for (d in 1..month.lengthOfMonth()) {
-        cells.add(MonthCell(month.atDay(d), otherMonth = false))
-    }
+    for (i in (startWeekday - 1) downTo 1) cells.add(MonthCell(first.minusDays(i.toLong()), true))
+    for (d in 1..month.lengthOfMonth()) cells.add(MonthCell(month.atDay(d), false))
     var next = month.atEndOfMonth().plusDays(1)
     while (cells.size < FIXED_CELLS) {
-        cells.add(MonthCell(next, otherMonth = true))
+        cells.add(MonthCell(next, true))
         next = next.plusDays(1)
     }
     return cells
-}
-
-/** Компактный список-легенда: одна строка на цвет, без "прыгающих" чипов */
-@Composable
-private fun LegendList() {
-    val items = listOf(
-        EnergyLevel.RED, EnergyLevel.YELLOW, EnergyLevel.WHITE, EnergyLevel.GREEN, EnergyLevel.BLUE
-    )
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "Энергия",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        items.forEach { level ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(level.color)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = level.label,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-/** Легенда для менструации (единственная заливка, что осталась) + значков овуляции/фертильности */
-@Composable
-private fun PhaseLegendList() {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "Фаза цикла",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        LegendRowColor("Менструация (отмечена)", PhaseColors.menstruationActual)
-        LegendRowColor("Менструация (прогноз)", PhaseColors.menstruationPredicted)
-        LegendRowSymbol("★", "День овуляции")
-        LegendRowSymbol("🌱", "Окно фертильности")
-    }
-}
-
-@Composable
-private fun LegendRowColor(label: String, color: androidx.compose.ui.graphics.Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(color)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun LegendRowSymbol(symbol: String, label: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(modifier = Modifier.size(10.dp), contentAlignment = Alignment.Center) {
-            Text(text = symbol, fontSize = 10.sp)
-        }
-        Spacer(Modifier.width(8.dp))
-        Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** Ненавязчивая карточка-напоминание отметить энергию за сегодня — по нажатию открывает день */
-@Composable
-private fun EnergyReminderCard(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Отметьте энергию за сегодня",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Так со временем накопится график для статистики",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Spacer(Modifier.width(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
-            listOf(EnergyLevel.RED, EnergyLevel.YELLOW, EnergyLevel.GREEN, EnergyLevel.BLUE).forEach { level ->
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clip(CircleShape)
-                        .background(level.color)
-                        .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
-                )
-            }
-        }
-    }
 }

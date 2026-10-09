@@ -42,15 +42,20 @@ fun StatisticsScreen(
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         Text(
             text = "Статистика",
-            fontSize = 22.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(18.dp))
+        Text(
+            text = "Закономерности вашего самочувствия",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 3.dp, bottom = 18.dp)
+        )
 
         // --- Анализ энергии ---
-        SectionHeader("Анализ энергии")
-        Spacer(Modifier.height(10.dp))
+        SectionHeader("ЭНЕРГИЯ")
+        Spacer(Modifier.height(8.dp))
 
         SectionCard(title = "Уровень энергии — последние 30 дней") {
             EnergyBarChart(days = days)
@@ -65,8 +70,8 @@ fun StatisticsScreen(
         Spacer(Modifier.height(22.dp))
 
         // --- Анализ цикла ---
-        SectionHeader("Анализ цикла")
-        Spacer(Modifier.height(10.dp))
+        SectionHeader("ИСТОРИЯ ЦИКЛА")
+        Spacer(Modifier.height(8.dp))
 
         SectionCard(title = "Стабильность менструального цикла") {
             if (stats.cycleLengths.isEmpty()) {
@@ -113,7 +118,8 @@ fun StatisticsScreen(
 private fun SectionHeader(title: String) {
     Text(
         text = title,
-        fontSize = 13.sp,
+        fontSize = 10.sp,
+        letterSpacing = 1.2.sp,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
     )
@@ -162,7 +168,7 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp)
     ) {

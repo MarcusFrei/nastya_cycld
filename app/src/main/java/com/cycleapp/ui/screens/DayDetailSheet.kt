@@ -123,21 +123,39 @@ fun DayDetailSheet(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 EnergyLevel.entries.forEach { level ->
                     val selected = selectedEnergy == level
-                    androidx.compose.foundation.layout.Box(
+                    Column(
                         modifier = Modifier
-                            .size(46.dp)
-                            .clip(CircleShape)
-                            .background(level.color)
-                            .border(
-                                width = if (selected) 3.dp else 1.dp,
-                                color = if (selected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                                shape = CircleShape
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
+                                else MaterialTheme.colorScheme.surface
                             )
-                            .clickable {
-                                selectedEnergy = if (selectedEnergy == level) null else level
-                            }
-                    )
+                            .clickable { selectedEnergy = if (selected) null else level }
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                                .background(level.color)
+                                .border(
+                                    width = if (selected) 2.5.dp else 1.dp,
+                                    color = if (selected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                                    shape = CircleShape
+                                )
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            text = level.label,
+                            fontSize = 9.sp,
+                            lineHeight = 11.sp,
+                            textAlign = TextAlign.Center,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
