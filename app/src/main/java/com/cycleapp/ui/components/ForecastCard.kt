@@ -1,17 +1,17 @@
 package com.cycleapp.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,84 +27,80 @@ import com.cycleapp.util.CycleCalculator
 
 @Composable
 fun ForecastCard(forecast: CycleForecast) {
-    AppCard {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Filled.Insights,
+                Icons.Filled.AutoAwesome,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(19.dp)
             )
-            Spacer(Modifier.width(8.dp))
-            SectionTitle("Прогноз")
-        }
-        Spacer(Modifier.height(10.dp))
-
-        val next = CycleCalculator.parse(forecast.predictedNextPeriodDate)
-        val whenLabel = when {
-            forecast.lateDays > 0 -> "задержка ${forecast.lateDays} дн."
-            forecast.daysUntilPeriod == 0 -> "сегодня"
-            forecast.daysUntilPeriod == 1 -> "завтра"
-            else -> "через ${forecast.daysUntilPeriod} дн."
-        }
-        Text(
-            text = "Следующие месячные: ${CycleCalculator.formatDMY(next)} ($whenLabel)",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            forecast.weekBeforeEnergyGuess?.let { level ->
-                EnergyMarker(level = level, size = 22.dp)
-                Spacer(Modifier.width(10.dp))
-            }
             Text(
-                text = "За неделю до месячных ожидается: ${forecast.weekBeforePhase.label.lowercase()}" +
-                    (forecast.weekBeforeEnergyGuess?.let { ", энергия ~«${it.label.lowercase()}»" } ?: ""),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
+                "Ближайший прогноз",
+                modifier = Modifier.padding(start = 8.dp),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
-
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.size(12.dp))
+        if (forecast.predictedNextPeriodDate != null && forecast.daysUntilPeriod != null) {
+            val daysLabel = when {
+                forecast.daysUntilPeriod <= 0 -> "ожидается в ближайшее время"
+                forecast.daysUntilPeriod == 1 -> "примерно завтра"
+                else -> "примерно через ${forecast.daysUntilPeriod} дн."
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Следующая менструация", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        CycleCalculator.formatDMY(forecast.predictedNextPeriodDate),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(daysLabel, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("♡", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        } else {
+            Text(
+                "Отметьте начало менструации, чтобы приложение могло построить прогноз.",
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.size(12.dp))
         Text(
-            text = forecast.note,
-            fontSize = 12.sp,
-            lineHeight = 17.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = accuracyText(forecast),
+            forecast.note,
             fontSize = 11.sp,
             lineHeight = 15.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Прогноз приблизительный и не подходит для предотвращения беременности.",
+            modifier = Modifier.padding(top = 5.dp),
+            fontSize = 10.sp,
+            lineHeight = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
         )
     }
-}
-
-private fun accuracyText(f: CycleForecast): String = when {
-    f.cyclesUsed == 0 ->
-        "Пока в основе прогноза типовой цикл в 28 дней (±${f.accuracyDays} дн.). После двух отмеченных циклов он подстроится под вас."
-    f.cyclesUsed < 3 ->
-        "Прогноз учитывает ${f.cyclesUsed} ${cyclesWord(f.cyclesUsed)} и станет точнее с каждым новым (сейчас ±${f.accuracyDays} дн.)."
-    else ->
-        "Прогноз построен по ${f.cyclesUsed} ${cyclesWord(f.cyclesUsed)}, погрешность около ±${f.accuracyDays} дн. Он приблизительный и не заменяет консультацию врача."
-}
-
-private fun cyclesWord(n: Int): String = when {
-    n % 10 == 1 && n % 100 != 11 -> "цикл"
-    n % 10 in 2..4 && n % 100 !in 12..14 -> "цикла"
-    else -> "циклов"
 }

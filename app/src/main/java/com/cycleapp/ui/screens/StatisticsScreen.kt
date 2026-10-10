@@ -23,10 +23,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.DayEntry
 import com.cycleapp.data.EnergyLevel
-import com.cycleapp.ui.components.AppCard
-import com.cycleapp.ui.theme.cycleColors
 import com.cycleapp.util.CycleCalculator
 import java.time.LocalDate
 import kotlin.math.roundToInt
@@ -35,7 +34,7 @@ import kotlin.math.roundToInt
 fun StatisticsScreen(
     periods: List<String>,
     days: Map<String, DayEntry>,
-    model: CycleCalculator.CycleModel
+    settings: CycleSettings
 ) {
     val stats = CycleCalculator.computeCycleStats(periods)
     val history = CycleCalculator.buildHistory(periods)
@@ -43,15 +42,20 @@ fun StatisticsScreen(
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         Text(
             text = "Статистика",
-            fontSize = 24.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Spacer(Modifier.height(18.dp))
+        Text(
+            text = "Закономерности вашего самочувствия",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 3.dp, bottom = 18.dp)
+        )
 
         // --- Анализ энергии ---
-        SectionHeader("Анализ энергии")
-        Spacer(Modifier.height(10.dp))
+        SectionHeader("ЭНЕРГИЯ")
+        Spacer(Modifier.height(8.dp))
 
         SectionCard(title = "Уровень энергии — последние 30 дней") {
             EnergyBarChart(days = days)
@@ -60,14 +64,14 @@ fun StatisticsScreen(
         Spacer(Modifier.height(16.dp))
 
         SectionCard(title = "Средние показатели энергии по фазам") {
-            EnergyByPhaseSummary(days = days, model = model)
+            EnergyByPhaseSummary(days = days, periods = periods, settings = settings)
         }
 
         Spacer(Modifier.height(22.dp))
 
         // --- Анализ цикла ---
-        SectionHeader("Анализ цикла")
-        Spacer(Modifier.height(10.dp))
+        SectionHeader("ИСТОРИЯ ЦИКЛА")
+        Spacer(Modifier.height(8.dp))
 
         SectionCard(title = "Стабильность менструального цикла") {
             if (stats.cycleLengths.isEmpty()) {
@@ -97,7 +101,7 @@ fun StatisticsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(12.dp))
-                CycleLengthChart(lengths = stats.cycleLengths, cycleLengthTarget = model.cycleLength)
+                CycleLengthChart(lengths = stats.cycleLengths, cycleLengthTarget = settings.cycleLength)
             }
         }
 
@@ -114,7 +118,8 @@ fun StatisticsScreen(
 private fun SectionHeader(title: String) {
     Text(
         text = title,
-        fontSize = 13.sp,
+        fontSize = 10.sp,
+        letterSpacing = 1.2.sp,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary
     )
@@ -160,8 +165,14 @@ private fun CycleHistoryList(history: List<CycleCalculator.HistoryRow>) {
 
 @Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
-    AppCard {
-        Text(text = title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
+        Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(12.dp))
         content()
     }
@@ -187,7 +198,6 @@ private fun EnergyBarChart(days: Map<String, DayEntry>) {
     val today = LocalDate.now()
     val last30 = (29 downTo 0).map { today.minusDays(it.toLong()) }
     val barColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-    val outlineColor = cycleColors().markerOutline
 
     Canvas(modifier = Modifier.fillMaxWidth().height(110.dp)) {
         val barWidth = size.width / last30.size
@@ -207,23 +217,12 @@ private fun EnergyBarChart(days: Map<String, DayEntry>) {
             }
             val color = level?.color ?: barColor
             val barHeight = maxHeight * heightFraction
-            val topLeft = Offset(index * barWidth + barWidth * 0.15f, maxHeight - barHeight)
-            val barSize = Size(barWidth * 0.7f, barHeight)
             drawRoundRect(
                 color = color,
-                topLeft = topLeft,
-                size = barSize,
+                topLeft = Offset(index * barWidth + barWidth * 0.15f, maxHeight - barHeight),
+                size = Size(barWidth * 0.7f, barHeight),
                 cornerRadius = CornerRadius(4f, 4f)
             )
-            if (level != null) {
-                drawRoundRect(
-                    color = outlineColor,
-                    topLeft = topLeft,
-                    size = barSize,
-                    cornerRadius = CornerRadius(4f, 4f),
-                    style = Stroke(width = 1.5f)
-                )
-            }
         }
     }
 }
@@ -274,12 +273,13 @@ private fun CycleLengthChart(lengths: List<Int>, cycleLengthTarget: Int) {
 @Composable
 private fun EnergyByPhaseSummary(
     days: Map<String, DayEntry>,
-    model: CycleCalculator.CycleModel
+    periods: List<String>,
+    settings: CycleSettings
 ) {
     val phaseScores = mutableMapOf<com.cycleapp.data.CyclePhase, MutableList<Int>>()
     days.forEach { (iso, entry) ->
         val energy = entry.energy ?: return@forEach
-        val info = CycleCalculator.getCycleInfo(iso, model)
+        val info = CycleCalculator.getCycleInfo(iso, periods, settings.cycleLength, settings.periodLength)
         val score = when (energy) {
             EnergyLevel.RED -> 1
             EnergyLevel.YELLOW -> 2
