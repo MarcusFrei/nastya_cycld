@@ -1,7 +1,6 @@
 package com.cycleapp.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,26 +12,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,68 +40,111 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.DayEntry
 import com.cycleapp.data.EnergyLevel
+import com.cycleapp.data.FlowLevel
 import com.cycleapp.data.Mood
 import com.cycleapp.data.Symptom
+import com.cycleapp.ui.components.EnergyMarker
+import com.cycleapp.ui.components.SelectChip
 import com.cycleapp.util.CycleCalculator
+import kotlinx.coroutines.delay
 
+/**
+ * Карточка дня. Кнопки «Сохранить» нет — любое изменение сохраняется сразу:
+ * энергия, настроение, симптомы и месячные — в момент нажатия, заметка — через полсекунды после ввода
+ * и при закрытии. Энергия вынесена наверх, чтобы не нужно было листать.
+ */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun DayDetailSheet(
     dateIso: String,
     initialEntry: DayEntry?,
     initialIsPeriod: Boolean,
-    periods: List<String>,
-    settings: CycleSettings,
+    model: CycleCalculator.CycleModel,
     onDismiss: () -> Unit,
-    onSave: (energy: EnergyLevel?, note: String, isPeriod: Boolean, mood: Mood?, symptoms: Set<Symptom>) -> Unit,
+    onChange: (energy: EnergyLevel?, note: String, isPeriod: Boolean, mood: Mood?, symptoms: Set<Symptom>, flow: FlowLevel?) -> Unit,
     onClear: () -> Unit
 ) {
-    var selectedEnergy by remember { mutableStateOf(initialEntry?.energy) }
+    var energy by remember { mutableStateOf(initialEntry?.energy) }
     var isPeriod by remember { mutableStateOf(initialIsPeriod) }
     var note by remember { mutableStateOf(initialEntry?.note ?: "") }
-    var selectedMood by remember { mutableStateOf(initialEntry?.mood) }
-    var selectedSymptoms by remember { mutableStateOf(initialEntry?.symptoms ?: emptySet()) }
+    var mood by remember { mutableStateOf(initialEntry?.mood) }
+    var symptoms by remember { mutableStateOf(initialEntry?.symptoms ?: emptySet()) }
+    var flow by remember { mutableStateOf(initialEntry?.flow) }
 
     val date = CycleCalculator.parse(dateIso)
-    val info = CycleCalculator.getCycleInfo(dateIso, periods, settings.cycleLength, settings.periodLength)
+    val info = CycleCalculator.getCycleInfo(dateIso, model)
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    fun push() {
+        onChange(energy, note, isPeriod, mood, symptoms, if (isPeriod) flow else null)
+    }
+
+    // Заметку сохраняем с небольшой задержкой, чтобы не писать на диск при каждой букве
+    val originalNote = initialEntry?.note ?: ""
+    LaunchedEffect(note) {
+        if (note != originalNote) {
+            delay(600)
+            push()
+        }
+    }
+
+    fun close() {
+        if (note != originalNote) push() // дописанная заметка не потеряется
+        onDismiss()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { close() },
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding() // чтобы кнопка "Сохранить" не пряталась за системной навигацией
-                .verticalScroll(rememberScrollState()) // весь контент теперь прокручивается — иначе кнопка уезжала за экран
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
-                .padding(top = 4.dp, bottom = 20.dp)
+                .padding(top = 0.dp, bottom = 16.dp)
         ) {
-            // Заголовок + крестик закрытия — не нужно свайпать дважды
+            // ---------- Заголовок: дата, фаза, очистка, закрыть ----------
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = CycleCalculator.formatDMY(date),
+                        text = CycleCalculator.formatLong(date).replaceFirstChar { it.uppercase() },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = if (info.cycleDay != null) "${info.phase.label} · день ${info.cycleDay}" else info.phase.label,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(
-                    onClick = onDismiss,
+                    onClick = {
+                        energy = null; isPeriod = false; note = ""; mood = null; symptoms = emptySet(); flow = null
+                        onClear()
+                    },
+                    modifier = Modifier.size(38.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.DeleteOutline,
+                        contentDescription = "Очистить день",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(
+                    onClick = { close() },
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(38.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
                 ) {
                     Icon(
                         Icons.Filled.Close,
@@ -116,58 +155,46 @@ fun DayDetailSheet(
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
-            Text(text = "Уровень энергии", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(10.dp))
-
+            // ---------- Энергия (самое частое действие — сверху) ----------
+            Spacer(Modifier.height(14.dp))
+            Text("Энергия", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 EnergyLevel.entries.forEach { level ->
-                    val selected = selectedEnergy == level
+                    val selected = energy == level
                     Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.09f)
-                                else MaterialTheme.colorScheme.surface
-                            )
-                            .clickable { selectedEnergy = if (selected) null else level }
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable {
+                                energy = if (selected) null else level
+                                push()
+                            }
+                            .padding(vertical = 4.dp)
                     ) {
-                        androidx.compose.foundation.layout.Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(level.color)
-                                .border(
-                                    width = if (selected) 2.5.dp else 1.dp,
-                                    color = if (selected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                                    shape = CircleShape
-                                )
-                        )
-                        Spacer(Modifier.height(5.dp))
+                        EnergyMarker(level = level, size = 44.dp, selected = selected)
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            text = level.label,
-                            fontSize = 9.sp,
-                            lineHeight = 11.sp,
+                            text = level.shortLabel,
+                            fontSize = 11.sp,
                             textAlign = TextAlign.Center,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
                         )
                     }
                 }
             }
 
-            // Блок менструации — центрированный текст, единый отступ 12dp со всех сторон
-            Spacer(Modifier.height(18.dp))
+            // ---------- Месячные ----------
+            Spacer(Modifier.height(12.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                    .padding(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -175,126 +202,95 @@ fun DayDetailSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Менструация в этот день",
+                        text = "Месячные в этот день",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Switch(checked = isPeriod, onCheckedChange = { isPeriod = it })
+                    Switch(
+                        checked = isPeriod,
+                        onCheckedChange = {
+                            isPeriod = it
+                            push()
+                        }
+                    )
                 }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = "Отметьте каждый день менструации — начало и конец определятся автоматически.",
-                    fontSize = 11.sp,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (isPeriod) {
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowLevel.entries.forEach { level ->
+                            SelectChip(
+                                label = level.label,
+                                selected = flow == level,
+                                onClick = {
+                                    flow = if (flow == level) null else level
+                                    push()
+                                }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
             }
 
-            // Настроение — карточки одинакового размера с равными отступами по горизонтали и вертикали
-            Spacer(Modifier.height(18.dp))
-            Text(text = "Настроение", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(10.dp))
+            // ---------- Настроение ----------
+            Spacer(Modifier.height(14.dp))
+            Text("Настроение", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(8.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Mood.entries.forEach { mood ->
-                    val selected = selectedMood == mood
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                            .clickable { selectedMood = if (selected) null else mood }
-                            .padding(horizontal = 12.dp, vertical = 9.dp)
-                    ) {
-                        Text(mood.emoji, fontSize = 14.sp)
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            mood.label,
-                            fontSize = 12.sp,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Mood.entries.forEach { m ->
+                    SelectChip(
+                        label = m.label,
+                        leading = m.emoji,
+                        selected = mood == m,
+                        onClick = {
+                            mood = if (mood == m) null else m
+                            push()
+                        }
+                    )
                 }
             }
 
-            // Симптомы — та же сетка с равными отступами
-            Spacer(Modifier.height(18.dp))
-            Text(text = "Симптомы", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(10.dp))
+            // ---------- Симптомы ----------
+            Spacer(Modifier.height(14.dp))
+            Text("Симптомы", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(8.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Symptom.entries.forEach { symptom ->
-                    val selected = selectedSymptoms.contains(symptom)
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                            .clickable {
-                                selectedSymptoms = if (selected) selectedSymptoms - symptom else selectedSymptoms + symptom
-                            }
-                            .padding(horizontal = 12.dp, vertical = 9.dp)
-                    ) {
-                        Text(
-                            symptom.label,
-                            fontSize = 12.sp,
-                            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    val selected = symptoms.contains(symptom)
+                    SelectChip(
+                        label = symptom.label,
+                        selected = selected,
+                        onClick = {
+                            symptoms = if (selected) symptoms - symptom else symptoms + symptom
+                            push()
+                        }
+                    )
                 }
             }
 
-            Spacer(Modifier.height(18.dp))
+            // ---------- Заметка ----------
+            Spacer(Modifier.height(14.dp))
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
-                label = { Text("Заметка (необязательно)") },
+                label = { Text("Заметка") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
-                maxLines = 3
+                maxLines = 4
             )
-
-            // Кнопка сохранения — крупная, во всю ширину, с иконкой, чтобы было очевидно, что она нажимаема.
-            // "Очистить" — второстепенное действие меньшего размера рядом с ней.
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    onSave(selectedEnergy, note.trim(), isPeriod, selectedMood, selectedSymptoms)
-                    onDismiss()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Сохранить", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
-
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(
-                onClick = { onClear(); onDismiss() },
-                modifier = Modifier.fillMaxWidth().height(44.dp),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(Icons.Filled.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Очистить день", fontSize = 13.sp)
-            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Всё сохраняется автоматически",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
