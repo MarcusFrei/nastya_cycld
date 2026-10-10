@@ -18,16 +18,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Android SDK уже установлен на runner'е ubuntu-latest (ANDROID_HOME),
+      # отдельная установка через android-actions/setup-android больше не нужна —
+      # она падает с "Failed to find package 'tools'" на новых cmdline-tools.
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
-      - name: Grant execute permission (if wrapper present)
-        run: |
-          if [ -f "./gradlew" ]; then chmod +x ./gradlew; fi
+      # В проекте нет gradlew, поэтому ставим Gradle 8.7 — версию, которой требует AGP 8.5.0
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
       - name: Build debug APK
         run: |
           if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
             ./gradlew assembleDebug --no-daemon
           else
             gradle assembleDebug --no-daemon

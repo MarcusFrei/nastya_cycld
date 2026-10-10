@@ -11,13 +11,31 @@ android {
         applicationId = "com.cycleapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // versionCode растёт с каждым запуском сборки на GitHub (номер запуска), поэтому каждая
+        // новая сборка считается обновлением и ставится поверх предыдущей.
+        versionCode = 100 + (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0)
+        versionName = "1.4"
+    }
+
+    // Общий ключ подписи, лежит в репозитории. Раньше каждая сборка на GitHub получала новый случайный
+    // debug-ключ, и Android отказывался ставить новую версию поверх старой («конфликт пакетов»).
+    // Теперь все сборки подписаны одним и тем же ключом.
+    signingConfigs {
+        create("shared") {
+            storeFile = file("cycleapp-shared.keystore")
+            storePassword = "cycleapp"
+            keyAlias = "cycleapp"
+            keyPassword = "cycleapp"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("shared")
         }
     }
 

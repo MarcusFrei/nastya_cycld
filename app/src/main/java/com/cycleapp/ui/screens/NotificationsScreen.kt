@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -23,22 +27,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cycleapp.data.NotificationSettings
+import com.cycleapp.ui.components.AppCard
 
 @Composable
 fun NotificationsScreen(
     settings: NotificationSettings,
     permissionGranted: Boolean,
     onRequestPermission: () -> Unit,
-    onChange: (NotificationSettings) -> Unit
+    onChange: (NotificationSettings) -> Unit,
+    onBack: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
-        Text(
-            text = "Уведомления",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.Filled.ArrowBack,
+                    contentDescription = "Назад",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Text(
+                text = "Уведомления",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        Spacer(Modifier.height(12.dp))
 
         if (!permissionGranted) {
             NotifCard {
@@ -143,15 +158,7 @@ fun NotificationsScreen(
 
 @Composable
 private fun NotifCard(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp)
-    ) {
-        content()
-    }
+    AppCard { content() }
 }
 
 @Composable

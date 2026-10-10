@@ -2,12 +2,12 @@ package com.cycleapp.data
 
 import androidx.compose.ui.graphics.Color
 
-enum class EnergyLevel(val label: String, val color: Color) {
-    RED("Минимум энергии", Color(0xFFE5484D)),
-    YELLOW("Ниже нормы", Color(0xFFF2B705)),
-    WHITE("Норма", Color(0xFFEFDFC8)), // тёплый бежевый вместо чистого белого — виден на любом фоне
-    GREEN("Выше нормы", Color(0xFF4CAF6D)),
-    BLUE("Пик энергии", Color(0xFF4D8CF2));
+enum class EnergyLevel(val label: String, val shortLabel: String, val color: Color) {
+    RED("Минимум энергии", "Минимум", Color(0xFFE5484D)),
+    YELLOW("Ниже нормы", "Низкая", Color(0xFFF5B700)),
+    WHITE("Норма", "Норма", Color(0xFFF3E6D2)), // тёплый кремовый; на календаре всегда с контрастной обводкой
+    GREEN("Выше нормы", "Хорошая", Color(0xFF4CAF6D)),
+    BLUE("Пик энергии", "Пик", Color(0xFF4D8CF2));
 
     companion object {
         fun fromKey(key: String?): EnergyLevel? = entries.find { it.name == key }
@@ -17,6 +17,16 @@ enum class EnergyLevel(val label: String, val color: Color) {
         fun fromScore(score: Double): EnergyLevel = when (Math.round(score).toInt().coerceIn(1, 5)) {
             1 -> RED; 2 -> YELLOW; 3 -> WHITE; 4 -> GREEN; else -> BLUE
         }
+    }
+}
+
+enum class FlowLevel(val label: String) {
+    LIGHT("Слабые"),
+    MEDIUM("Средние"),
+    HEAVY("Обильные");
+
+    companion object {
+        fun fromKey(key: String?): FlowLevel? = entries.find { it.name == key }
     }
 }
 
@@ -55,53 +65,49 @@ data class DayEntry(
     val energy: EnergyLevel? = null,
     val note: String = "",
     val symptoms: Set<Symptom> = emptySet(),
-    val mood: Mood? = null
+    val mood: Mood? = null,
+    val flow: FlowLevel? = null
 )
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
-/** Пресет фона. Не зависит от темы — тема влияет только на цвет текста. */
+/**
+ * Пресет оформления. Все фоны — только пастельные (розовый, бежевый, голубой, зелёный, сиреневый).
+ * Акцентный цвет (кнопки, выделения, текущий день) жёстко привязан к фону и отдельно не выбирается.
+ * Тёмная тема строится автоматически из того же пресета: тот же оттенок, но глубокий и приглушённый.
+ */
 data class WallpaperPreset(
     val id: Int,
     val name: String,
-    val colors: List<Color>
+    val colors: List<Color>,   // верх и низ градиента в светлой теме
+    val accent: Color          // акцент этого фона (светлая тема)
 )
+
+const val DEFAULT_WALLPAPER_ID = 14
 
 val WALLPAPER_PRESETS = listOf(
-    WallpaperPreset(0, "Полночь", listOf(Color(0xFF1B1420), Color(0xFF2C2036))),
-    WallpaperPreset(1, "Лаванда", listOf(Color(0xFF2D1B4E), Color(0xFF4A2E6B))),
-    WallpaperPreset(2, "Пудра тёмная", listOf(Color(0xFF3D2530), Color(0xFF5C3644))),
-    WallpaperPreset(3, "Карамель тёмная", listOf(Color(0xFF3A2E1F), Color(0xFF5C4530))),
-    WallpaperPreset(4, "Океан", listOf(Color(0xFF0F2A3D), Color(0xFF1E4D5C))),
-    WallpaperPreset(5, "Лес", listOf(Color(0xFF1A2E1F), Color(0xFF2E4D33))),
-    WallpaperPreset(6, "Роза тёмная", listOf(Color(0xFF3D1F2A), Color(0xFF6B3350))),
-    WallpaperPreset(7, "Графит", listOf(Color(0xFF232326), Color(0xFF343438))),
-    WallpaperPreset(8, "Ваниль", listOf(Color(0xFFFDF6EC), Color(0xFFF5E9D6))),
-    WallpaperPreset(9, "Мята", listOf(Color(0xFFEAF7F0), Color(0xFFD8F0E3))),
-    WallpaperPreset(10, "Небо", listOf(Color(0xFFEAF3FB), Color(0xFFD7E9F8))),
-    WallpaperPreset(11, "Персик", listOf(Color(0xFFFDEDE3), Color(0xFFFBDDC9))),
-    WallpaperPreset(12, "Сирень", listOf(Color(0xFFF3EAFB), Color(0xFFE6D6F5))),
-    WallpaperPreset(13, "Пудра светлая", listOf(Color(0xFFFCEAEF), Color(0xFFF7D9E3)))
+    WallpaperPreset(14, "Лепесток", listOf(Color(0xFFFAEDF3), Color(0xFFF1DAF0)), Color(0xFFA64CC2)),
+    WallpaperPreset(13, "Пудра", listOf(Color(0xFFFCEAEF), Color(0xFFF7D9E3)), Color(0xFFCF4B7C)),
+    WallpaperPreset(11, "Персик", listOf(Color(0xFFFDEDE3), Color(0xFFFBDDC9)), Color(0xFFC8622A)),
+    WallpaperPreset(8, "Ваниль", listOf(Color(0xFFFDF6EC), Color(0xFFF5E9D6)), Color(0xFFA9774A)),
+    WallpaperPreset(15, "Лён", listOf(Color(0xFFF5F0E8), Color(0xFFE8DFCF)), Color(0xFF8A7050)),
+    WallpaperPreset(9, "Мята", listOf(Color(0xFFEAF7F0), Color(0xFFD8F0E3)), Color(0xFF2E9A68)),
+    WallpaperPreset(16, "Фисташка", listOf(Color(0xFFF1F6E4), Color(0xFFE1EDC9)), Color(0xFF6A942C)),
+    WallpaperPreset(10, "Небо", listOf(Color(0xFFEAF3FB), Color(0xFFD7E9F8)), Color(0xFF3B7FC4)),
+    WallpaperPreset(17, "Лёд", listOf(Color(0xFFE9F6F8), Color(0xFFD2ECF1)), Color(0xFF248FA4)),
+    WallpaperPreset(12, "Сирень", listOf(Color(0xFFF3EAFB), Color(0xFFE6D6F5)), Color(0xFF8650C6))
 )
 
-/** Акцентный цвет — используется для кнопок, выделения текущего дня, активных элементов */
-data class AccentOption(val id: Int, val name: String, val color: Color)
+fun findPreset(id: Int): WallpaperPreset =
+    WALLPAPER_PRESETS.find { it.id == id } ?: WALLPAPER_PRESETS.first()
 
-val ACCENT_OPTIONS = listOf(
-    AccentOption(0, "Фиолетовый", Color(0xFFC9A0DC)),
-    AccentOption(1, "Розовый", Color(0xFFF2A6C6)),
-    AccentOption(2, "Бежевый", Color(0xFFD9B99B)),
-    AccentOption(3, "Пудровый", Color(0xFFE8B4BC)),
-    AccentOption(4, "Мятный", Color(0xFF8ED1A0)),
-    AccentOption(5, "Голубой", Color(0xFF8FB8E0))
-)
-
+/**
+ * Настройки оформления: тема (светлая / тёмная / системная) и фон.
+ * Длина цикла и менструации здесь не хранятся — они вычисляются автоматически.
+ */
 data class CycleSettings(
-    val cycleLength: Int = 28,
-    val periodLength: Int = 5,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val wallpaperId: Int = 0,
-    val accentId: Int = 0
+    val themeMode: ThemeMode = ThemeMode.LIGHT,
+    val wallpaperId: Int = DEFAULT_WALLPAPER_ID
 )
 
 data class NotificationSettings(
@@ -113,6 +119,7 @@ data class NotificationSettings(
 )
 
 enum class PregnancyChance(val label: String) {
+    UNKNOWN("Нет данных"),
     VERY_LOW("Очень низкая"),
     LOW("Низкая"),
     MEDIUM("Средняя"),
@@ -125,22 +132,27 @@ enum class CyclePhase(val label: String, val hint: String) {
     FOLLICULAR("Фолликулярная фаза", "Энергия постепенно растёт. Хорошее время для новых начинаний."),
     OVULATION("Овуляция", "Пик энергии и коммуникабельности у многих в этот период."),
     LUTEAL("Лютеиновая фаза", "Энергия постепенно снижается, ближе к концу возможна усталость."),
-    UNKNOWN("Нет данных", "Отметьте дни менструации, чтобы начать отслеживание.")
+    UNKNOWN("Нет данных", "Нажмите «Начались месячные» в первый день — и приложение начнёт считать цикл само.")
 }
 
 data class CycleInfo(
     val cycleDay: Int?,
     val phase: CyclePhase,
     val ovulationDay: Int,
-    val pregnancyChance: PregnancyChance
+    val pregnancyChance: PregnancyChance,
+    val cycleLength: Int
 )
 
 data class CycleForecast(
-    val predictedNextPeriodDate: String?,   // ISO
-    val daysUntilPeriod: Int?,
-    val predictedOvulationDate: String?,    // ISO
-    val weekBeforeDate: String?,            // ISO
+    val predictedNextPeriodDate: String,     // ISO
+    val daysUntilPeriod: Int,                // 0 — сегодня/со дня на день
+    val lateDays: Int,                       // >0 — задержка относительно прогноза
+    val predictedOvulationDate: String,      // ISO
+    val daysUntilOvulation: Int,
+    val weekBeforeDate: String,              // ISO
     val weekBeforePhase: CyclePhase,
     val weekBeforeEnergyGuess: EnergyLevel?,
+    val accuracyDays: Int,                   // ± дней
+    val cyclesUsed: Int,                     // по скольким циклам считается прогноз
     val note: String
 )

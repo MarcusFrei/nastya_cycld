@@ -1,37 +1,74 @@
 package com.cycleapp.ui.theme
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.cycleapp.data.CycleInfo
-import com.cycleapp.data.CyclePhase
 import com.cycleapp.data.PregnancyChance
 
 /**
- * Минимальная цветовая индикация на календаре — только для "критических" дней:
- * менструация (факт/прогноз). Фолликулярная и лютеиновая фазы больше НЕ подсвечиваются
- * заливкой/рамкой — это перегружало календарь и ухудшало читаемость цифр на тёмном фоне.
- * Овуляция и окно фертильности показываются маленькими значками (звезда / росток),
- * а не цветом всей ячейки — так же, как это сделано в референсе, который прислал пользователь.
+ * Цвета календаря. Правила, чтобы значки читались на любом фоне:
+ *  - ФАКТ менструации — сплошной насыщенный круг с белой цифрой;
+ *  - ПРОГНОЗ менструации — пунктирное кольцо того же цвета;
+ *  - ОВУЛЯЦИЯ — сплошной бирюзовый круг;
+ *  - ФЕРТИЛЬНЫЕ дни — зелёное кольцо с мягкой заливкой;
+ *  - ЭНЕРГИЯ — отдельный круглый маркер с цифрой 1–5 ПОД числом (не заливает ячейку),
+ *    всегда с тёмной обводкой — даже «бежевый» (норма) виден на светлом фоне.
  */
-object PhaseColors {
-    val menstruationActual = Color(0xFFD1477E)
-    val menstruationPredicted = Color(0xFFF0AFC7)
-    val menstruationTint = Color(0xFFF8DCE6)
-    val menstruationTintLight = Color(0xFFFBEAF0)
+@Immutable
+data class CycleColors(
+    val period: Color,
+    val periodRing: Color,
+    val ovulation: Color,
+    val fertile: Color,
+    val fertileFill: Color,
+    val markerOutline: Color,
+    val onSolid: Color
+)
 
-    val ovulationMarker = Color(0xFF2FA9C3)
-    val fertileMarker = Color(0xFF5FBF7C)
-
-    /** Мягкая заливка ячейки — только для менструации (факт или прогноз), иначе null */
-    fun fillTint(info: CycleInfo, isPeriod: Boolean): Color? = when {
-        isPeriod -> menstruationTint
-        info.phase == CyclePhase.MENSTRUATION -> menstruationTintLight
-        else -> null
+@Composable
+fun cycleColors(): CycleColors {
+    val darkBackground = MaterialTheme.colorScheme.background.luminance() < 0.35f
+    return if (darkBackground) {
+        CycleColors(
+            period = Color(0xFFE0457F),
+            periodRing = Color(0xFFFF8FB8),
+            ovulation = Color(0xFF22B2CF),
+            fertile = Color(0xFF6BD08F),
+            fertileFill = Color(0x336BD08F),
+            markerOutline = Color(0xCCFFFFFF),
+            onSolid = Color.White
+        )
+    } else {
+        CycleColors(
+            period = Color(0xFFD6336C),
+            periodRing = Color(0xFFD6336C),
+            ovulation = Color(0xFF138CA6),
+            fertile = Color(0xFF2F9E5E),
+            fertileFill = Color(0xFFCDEFDB),
+            markerOutline = Color(0xFF241426).copy(alpha = 0.55f),
+            onSolid = Color.White
+        )
     }
+}
 
+object PhaseColors {
     fun isOvulationDay(info: CycleInfo): Boolean =
         info.cycleDay != null && info.cycleDay == info.ovulationDay
 
     /** Фертильное окно, но не сам день овуляции (у него отдельный маркер) */
     fun isFertileWindow(info: CycleInfo): Boolean =
-        !isOvulationDay(info) && (info.pregnancyChance == PregnancyChance.HIGH || info.pregnancyChance == PregnancyChance.MEDIUM)
+        !isOvulationDay(info) &&
+            (info.pregnancyChance == PregnancyChance.HIGH || info.pregnancyChance == PregnancyChance.MEDIUM)
+
+    fun chanceColor(chance: PregnancyChance): Color = when (chance) {
+        PregnancyChance.UNKNOWN -> Color(0xFF9A8FA0)
+        PregnancyChance.VERY_LOW -> Color(0xFF2F9E5E)
+        PregnancyChance.LOW -> Color(0xFF6BAA55)
+        PregnancyChance.MEDIUM -> Color(0xFFD99100)
+        PregnancyChance.HIGH -> Color(0xFFE06A00)
+        PregnancyChance.PEAK -> Color(0xFFD6336C)
+    }
 }

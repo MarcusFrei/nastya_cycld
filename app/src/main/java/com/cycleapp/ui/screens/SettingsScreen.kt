@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,45 +35,96 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cycleapp.data.ACCENT_OPTIONS
 import com.cycleapp.data.CycleSettings
 import com.cycleapp.data.ThemeMode
 import com.cycleapp.data.WALLPAPER_PRESETS
+import com.cycleapp.ui.components.AppCard
+import com.cycleapp.ui.components.PillButton
+import com.cycleapp.ui.theme.presetBackground
+import androidx.compose.ui.graphics.luminance
+import com.cycleapp.ui.components.SelectChip
+import com.cycleapp.util.CycleCalculator
+import androidx.compose.foundation.layout.width
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     settings: CycleSettings,
-    onCycleLengthChange: (Int) -> Unit,
-    onPeriodLengthChange: (Int) -> Unit,
+    model: CycleCalculator.CycleModel,
+    onOpenNotifications: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onWallpaperChange: (Int) -> Unit,
-    onAccentChange: (Int) -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
     onClearAllData: () -> Unit
 ) {
     var showClearConfirm by remember { mutableStateOf(false) }
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.35f
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         Text(
             text = "Настройки",
-            fontSize = 22.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(Modifier.height(16.dp))
 
-        SettingsCard(title = "Длина цикла") {
-            Stepper(
-                label = "Длина цикла (дней)",
-                value = settings.cycleLength,
-                onMinus = { onCycleLengthChange((settings.cycleLength - 1).coerceAtLeast(15)) },
-                onPlus = { onCycleLengthChange((settings.cycleLength + 1).coerceAtMost(60)) }
+        // Уведомления вынесены сюда из нижней навигации
+        AppCard(onClick = onOpenNotifications) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Уведомления", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Напоминания о месячных и овуляции",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Вместо ручного ввода длины цикла и месячных — автоматический расчёт
+        SettingsCard(title = "Как считается прогноз") {
+            Text(
+                "Длину цикла и месячных вводить не нужно: приложение считает их само по вашим отметкам, " +
+                    "а свежие циклы влияют на прогноз сильнее старых.",
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                EstimateBlock("Цикл", "${model.cycleLength} дн.")
+                EstimateBlock("Месячные", "${model.periodLength} дн.")
+                EstimateBlock("Погрешность", "±${model.accuracyDays} дн.")
+            }
             Spacer(Modifier.height(10.dp))
-            Stepper(
-                label = "Длина менструации (дней)",
-                value = settings.periodLength,
-                onMinus = { onPeriodLengthChange((settings.periodLength - 1).coerceAtLeast(1)) },
-                onPlus = { onPeriodLengthChange((settings.periodLength + 1).coerceAtMost(14)) }
+            Text(
+                text = if (model.cyclesUsed == 0)
+                    "Пока используются типовые значения (28 и 5 дней). Отметьте начало месячных хотя бы дважды — расчёт подстроится под вас."
+                else
+                    "Расчёт по последним ${model.cyclesUsed} ${if (model.cyclesUsed == 1) "циклу" else "циклам"}.",
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -79,7 +132,7 @@ fun SettingsScreen(
 
         SettingsCard(title = "Тема оформления") {
             Text(
-                "Влияет только на цвет текста — фон определяется выбранным пресетом ниже",
+                "Цвета кнопок и выделений подбираются под выбранный фон. Тёмная тема сохраняет оттенок фона.",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -93,70 +146,61 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        SettingsCard(title = "Акцентный цвет") {
-            Text(
-                "Используется для кнопок, текущего дня и выделений",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ACCENT_OPTIONS.forEach { accent ->
-                    val selected = accent.id == settings.accentId
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(accent.color)
-                            .then(
-                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape)
-                            )
-                            .clickable { onAccentChange(accent.id) }
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
         SettingsCard(title = "Фон") {
             Text(
-                "Не зависит от темы — можно выбрать любой фон при любой теме",
+                "Нежные пастельные цвета. Работают и в светлой, и в тёмной теме.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(12.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.fillMaxWidth().height(220.dp)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(WALLPAPER_PRESETS) { preset ->
+                WALLPAPER_PRESETS.forEach { preset ->
                     Column(
-                        modifier = Modifier.padding(6.dp),
+                        modifier = Modifier.width(64.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val selected = preset.id == settings.wallpaperId
                         androidx.compose.foundation.layout.Box(
                             modifier = Modifier
-                                .size(50.dp)
+                                .size(52.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Brush.verticalGradient(preset.colors))
+                                .background(Brush.verticalGradient(presetBackground(preset, isDark)))
                                 .then(
-                                    if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
-                                    else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                                    if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
+                                    else Modifier.border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
                                 )
                                 .clickable { onWallpaperChange(preset.id) }
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             preset.name,
-                            fontSize = 9.sp,
+                            fontSize = 10.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1
                         )
                     }
                 }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        SettingsCard(title = "Журнал: экспорт и импорт") {
+            Text(
+                "Сохраните все отметки в файл — например, перед переустановкой приложения. " +
+                    "Если обновление не ставится, удалите приложение, установите новую версию и загрузите файл обратно.",
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PillButton("Экспорт", onExport, Modifier.weight(1f))
+                PillButton("Импорт", onImport, Modifier.weight(1f), filled = false)
             }
         }
 
@@ -201,16 +245,10 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp)
-    ) {
+    AppCard {
         Text(
             text = title,
-            fontSize = 14.sp,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -220,42 +258,11 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Stepper(label: String, value: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            StepButton("−", onMinus)
-            Text(
-                value.toString(),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-            StepButton("+", onPlus)
-        }
-    }
-}
-
-@Composable
-private fun StepButton(symbol: String, onClick: () -> Unit) {
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier
-            .size(30.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.background)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(symbol, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+private fun EstimateBlock(label: String, value: String) {
+    Column {
+        Text(label, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(2.dp))
+        Text(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
@@ -266,18 +273,5 @@ private fun ThemeOption(
     current: ThemeMode,
     onSelect: (ThemeMode) -> Unit
 ) {
-    val selected = mode == current
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable { onSelect(mode) }
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(
-            label,
-            fontSize = 12.sp,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    SelectChip(label = label, selected = mode == current, onClick = { onSelect(mode) })
 }

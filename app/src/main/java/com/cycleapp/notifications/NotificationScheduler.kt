@@ -32,7 +32,7 @@ object NotificationScheduler {
         cancelAll(context, periodLength)
         NotificationReceiver.ensureChannel(context)
 
-        if (forecast?.predictedNextPeriodDate == null) return
+        if (forecast == null) return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val nextPeriod = CycleCalculator.parse(forecast.predictedNextPeriodDate)
@@ -54,7 +54,7 @@ object NotificationScheduler {
                 "По вашему циклу месячные должны начаться завтра."
             )
         }
-        if (settings.weekBeforeOvulation && forecast.predictedOvulationDate != null) {
+        if (settings.weekBeforeOvulation) {
             val ovulation = CycleCalculator.parse(forecast.predictedOvulationDate)
             scheduleAt(
                 context, alarmManager, REQ_WEEK_BEFORE_OVULATION,
